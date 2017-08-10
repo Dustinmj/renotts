@@ -13,6 +13,10 @@ type lst struct {
 
 func (b lst) Response(m gossdp.ResponseMessage) {}
 
+// Port -- Currently active port
+// set by server
+var Port string
+
 // DVPATH - path to device type
 const DVPATH = "/device_description.xml"
 
@@ -48,8 +52,8 @@ const REF = 2000
 // signal channel, close cast loop
 var sig = make(chan int)
 
-// server defaults, scoped for re-broadcast calls
-var serverDef gossdp.AdvertisableServer
+// ip address we're on, if this changes, restart server
+var ip = ""
 
 func init() {
 	// generate UUID
@@ -59,12 +63,9 @@ func init() {
 	}
 	UUID = UUIDB + mcs
 
-	// create server defaults
-	serverDef = gossdp.AdvertisableServer{
-		ServiceType: DT,
-		DeviceUuid:  UUID,
-		Location:    "http://" + com.GetOutboundIP().String() + config.Val("port") + DVPATH,
-		MaxAge:      MAXAGE,
+	// set port to default if nil
+	if len(Port) > 0 {
+		Port = config.Val("port")
 	}
 }
 
@@ -90,16 +91,35 @@ func cast() error {
 	}
 	defer s.Stop()
 	go s.Start()
-	com.Msg("UPNP Server Started.")
+	// store ip for future checks
+	ip = com.GetOutboundIP().String()
+	// create server defaults
+	serverDef := defs(ip)
 	s.AdvertiseServer(serverDef) // library re-adverts correctly
 	for {
 		select {
 		case <-sig:
 			return nil
 		default:
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 5)
+			// check ip every 5 Seconds
+			if ip != com.GetOutboundIP().String() {
+				s.RemoveServer(UUID)
+				ip = com.GetOutboundIP().String()
+				serverDef = defs(ip)
+				s.AdvertiseServer(serverDef)
+			}
 			break
 		}
+	}
+}
+
+func defs(ip string) gossdp.AdvertisableServer {
+	return gossdp.AdvertisableServer{
+		ServiceType: DT,
+		DeviceUuid:  UUID,
+		Location:    "http://" + ip + Port + DVPATH,
+		MaxAge:      MAXAGE,
 	}
 }
 

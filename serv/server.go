@@ -3,6 +3,7 @@ package serv
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/dustinmj/renotts/aud"
 	"github.com/dustinmj/renotts/com"
 	"github.com/dustinmj/renotts/config"
@@ -10,6 +11,7 @@ import (
 	"github.com/dustinmj/renotts/upnp"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -30,11 +32,30 @@ func Create() {
 		com.Msg("Invalid path specified. ", mPath, " is reserved. Rewriting to /tts")
 		mPath = "tts"
 	}
-	com.Msg("Server listening at http://" + com.GetOutboundIP().String() + mPort + "/" + mPath + "/polly/")
-	com.Msg("Instructions on use at http://" + com.GetOutboundIP().String() + mPort + "/")
 	sMux := http.NewServeMux()
 	sMux.HandleFunc("/", handler)
-	if err := http.ListenAndServe(mPort, sMux); err != nil {
+	var p string
+	ip := com.GetOutboundIP().String()
+	if mPort == "0" {
+		listener, err := net.Listen("tcp", ":"+mPort)
+		if err != nil {
+			com.Msg()
+		}
+		// if mPort is 0, that's what upnp will advertise, this won't working
+		// without adjusting the library, we can just get the port and
+		// rebind manually
+		p = fmt.Sprintf(":%v", listener.Addr().(*net.TCPAddr).Port)
+		listener.Close()
+	} else {
+		p = fmt.Sprintf(":%v", mPort)
+	}
+	// tell upnp where to find us, this may be random if we
+	// were able to attach to `0`
+	upnp.Port = p
+	upnp.Create() // create upnp server now that we know port
+	com.Msg(fmt.Sprintf("Server listening at http://%v%v/%v/polly/", ip, p, mPath))
+	com.Msg(fmt.Sprintf("Help at http://%v%v/", ip, p))
+	if err := http.ListenAndServe(p, sMux); err != nil {
 		com.Exit(71, []byte("Cannot create webserver. "+err.Error()))
 	}
 }
@@ -149,6 +170,7 @@ func mk(in *http.Request, t string) (com.Rq, error) {
 	if err != nil {
 		return com.Rq{}, err
 	}
+	out.Param.Text = fmt.Sprintf("%s", out.Param.Text)
 	// trim text to 3k chars
 	if len(out.Param.Text) > 3000 {
 		out.Param.Text = out.Param.Text[:3000]

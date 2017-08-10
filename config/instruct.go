@@ -15,15 +15,11 @@ named easytts.toml containing:
 /*
 * port:      port to listen on, e.g. 8080
 * cachepath: path to cache location, must be writable
-* execCmd:   command to execute to play mp3s, e.g. mpg123
-* execArgs:  set of args to send to player in execCmd, e.g. ["-f 2","-g 1"]
 aws-config-profile // TODO INSTRUCT ABOUT
 */
 
 port = "<port>"
 cachepath = "<cachepath>"
-execCmd = "<execCmd>"
-execArgs = [ "<arg1>", "<arg2>" ]
 
 // *** end renotts.toml
 

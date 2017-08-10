@@ -5,7 +5,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -22,7 +21,7 @@ func init() {
 	if err == nil {
 		com.Msg("Configuration file loaded: " + viper.ConfigFileUsed())
 	} else {
-		com.Msg("!!! Configuration file not found, using defaults.")
+		com.Msg("Configuration file not found, using defaults.")
 	}
 	// check port
 	setDefs()
@@ -45,11 +44,9 @@ func Val(key string) string {
 }
 
 func setDefs() {
-	viper.SetDefault("port", ":8080")
+	viper.SetDefault("port", "0")
 	viper.SetDefault("path", "tts")
-	viper.SetDefault("cachepath", path.Clean("/cache"))
-	viper.SetDefault("execCmd", "mpg123")
-	viper.SetDefault("execArgs", []string{})
+	viper.SetDefault("cachepath", path.Clean("."))
 }
 
 func setPaths() {
@@ -61,8 +58,11 @@ func setPaths() {
 func chkDefs() {
 	// check cache path to make sure it's writeable
 	if _, err := os.Stat(Val("cachepath")); os.IsNotExist(err) {
-		com.Msg("!!! Cache directory", Val("cachepath"), "not writeable! Check Config!")
-		com.Exit(73, []byte{})
+		// attempt to make directory
+		if err = os.MkdirAll(Val("cachepath"), os.ModePerm); err != nil {
+			com.Msg("Cache directory", Val("cachepath"), "not writeable!")
+			com.Exit(73, []byte{})
+		}
 	}
 	// check port to make sure it's correct
 	badP := func() {
@@ -78,17 +78,11 @@ func chkDefs() {
 	if err != nil {
 		badP()
 	}
-	SetOverride("port", ":"+strconv.Itoa(mi))
+	SetOverride("port", strconv.Itoa(mi))
 	// setup path -- we just remove beginning slash
 	p := Val("path")
 	if p[0:1] == "/" {
 		p = p[1:]
 	}
 	SetOverride("path", path.Clean(p))
-	// check sound player
-	if _, err := exec.LookPath(Val("execCmd")); err != nil {
-		com.Msg("!!! Unable to reach", Val("execCmd"), " player, please check installation or configure another player.")
-		com.Exit(72, []byte{})
-	}
-	com.Msg("Found", Val("execCmd"), "player. Everything appears to be in order.")
 }
