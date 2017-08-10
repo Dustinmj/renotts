@@ -1,0 +1,3 @@
+curl -H "Content-Type: application/json" -X POST -d '{"text":"Hello","voice":"Joanna","samplerate":"22050"}' http://localhost:1234/tts/polly
+
+curl -X POST -H "Content-Type:application/json" -d @testData.json http://localhost:1234/tts/polly
