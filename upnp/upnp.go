@@ -1,7 +1,7 @@
 package upnp
 
 import (
-	"github.com/dustinmj/renotts/com"
+	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
 	"github.com/fromkeith/gossdp"
 	"strings"
@@ -23,19 +23,14 @@ const DVPATH = "/device_description.xml"
 //SN - serial number used to identify urn:..:basic:1 as RenoTTS in upnp
 const SN = "5666482213265F"
 
-// DT - the device type
-const DT = "urn:schemas-dustinjorge-com:device:TTSEngine:1"
-
-//const DT = "urn:schemas-upnp-org:device:ZonePlayer:1"
-
 // FN - the device 'friendly name'
-var FN = com.AppName + ": " + com.GetOutboundIP().String()
+var FN = coms.AppName + ": " + coms.GetOutboundIP().String()
 
 // M - the device 'manufacturer'
 const M = "Dustin Jorge"
 
 // MN - the device model name
-const MN = com.AppVers
+const MN = coms.AppVers
 
 // UUIDB - UUID Base String
 const UUIDB = "e658f044-7bf4-11e7-bb31-"
@@ -59,7 +54,7 @@ func init() {
 	// generate UUID
 	mcs, err := getMacStr()
 	if err != nil {
-		com.Msg("Could not reliably determine mac address, unable to start UPNP.")
+		coms.Msg("Could not reliably determine mac address, unable to start UPNP.")
 	}
 	UUID = UUIDB + mcs
 
@@ -92,7 +87,7 @@ func cast() error {
 	defer s.Stop()
 	go s.Start()
 	// store ip for future checks
-	ip = com.GetOutboundIP().String()
+	ip = coms.GetOutboundIP().String()
 	// create server defaults
 	serverDef := defs(ip)
 	s.AdvertiseServer(serverDef) // library re-adverts correctly
@@ -103,9 +98,9 @@ func cast() error {
 		default:
 			time.Sleep(time.Second * 5)
 			// check ip every 5 Seconds
-			if ip != com.GetOutboundIP().String() {
+			if ip != coms.GetOutboundIP().String() {
 				s.RemoveServer(UUID)
-				ip = com.GetOutboundIP().String()
+				ip = coms.GetOutboundIP().String()
 				serverDef = defs(ip)
 				s.AdvertiseServer(serverDef)
 			}
@@ -116,7 +111,7 @@ func cast() error {
 
 func defs(ip string) gossdp.AdvertisableServer {
 	return gossdp.AdvertisableServer{
-		ServiceType: DT,
+		ServiceType: coms.DeviceType,
 		DeviceUuid:  UUID,
 		Location:    "http://" + ip + Port + DVPATH,
 		MaxAge:      MAXAGE,
@@ -124,7 +119,7 @@ func defs(ip string) gossdp.AdvertisableServer {
 }
 
 func getMacStr() (string, error) {
-	mcs, err := com.GetMacAddr()
+	mcs, err := coms.GetMacAddr()
 	if err != nil {
 		return "", err
 	}

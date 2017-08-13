@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/dustinmj/renotts/com"
+	"github.com/dustinmj/renotts/coms"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 	"os"
@@ -19,9 +19,9 @@ func init() {
 	viper.SetConfigName("renotts")
 	err := viper.ReadInConfig()
 	if err == nil {
-		com.Msg("Configuration file loaded: " + viper.ConfigFileUsed())
+		coms.Msg("Configuration file loaded: " + viper.ConfigFileUsed())
 	} else {
-		com.Msg("Configuration file not found, using defaults.")
+		coms.Msg("Configuration file not found, using defaults.")
 	}
 	// check port
 	setDefs()
@@ -60,14 +60,14 @@ func chkDefs() {
 	if _, err := os.Stat(Val("cachepath")); os.IsNotExist(err) {
 		// attempt to make directory
 		if err = os.MkdirAll(Val("cachepath"), os.ModePerm); err != nil {
-			com.Msg("Cache directory", Val("cachepath"), "not writeable!")
-			com.Exit(73, []byte{})
+			coms.Msg("Cache directory", Val("cachepath"), "not writeable!")
+			coms.Exit(73, []byte{})
 		}
 	}
 	// check port to make sure it's correct
 	badP := func() {
-		com.Msg("!!! Invalid port", Val("port"))
-		com.Exit(78, []byte{})
+		coms.Msg("Invalid port", Val("port"))
+		coms.Exit(78, []byte{})
 	}
 	re := regexp.MustCompile("[\x3A]?(?P<pnum>\\d{1,5})")
 	m := re.FindStringSubmatch(Val("port"))

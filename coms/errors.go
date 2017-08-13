@@ -1,4 +1,4 @@
-package config
+package coms
 
 // Err - contains error messages
 var Err = map[string]string{

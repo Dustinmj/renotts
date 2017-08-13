@@ -1,15 +1,17 @@
-package aud
+package server
 
 import (
 	"bitbucket.org/weberc2/media/ao"
 	"bitbucket.org/weberc2/media/mpg123"
-	"github.com/dustinmj/renotts/com"
+	"github.com/dustinmj/renotts/coms"
 	"io"
 )
 
-// Play123 execute a play command
-func Play123(sF com.Sf) error { // TODO
-	com.Msg("Playing file: " + sF.Path)
+var mpgPlayer = player{}
+
+// Play123 execute a play command using mpg123 bindings
+func (mpgPlayer player) Play(sF Sf) error {
+	coms.Msg("Playing file: " + sF.Path)
 
 	mpg123.Initialize()
 	defer mpg123.Exit()

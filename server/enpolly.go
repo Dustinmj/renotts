@@ -1,30 +1,26 @@
-package service
+package server
 
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/polly"
-	"github.com/dustinmj/renotts/com"
+	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
-	"github.com/dustinmj/renotts/fs"
 	"net/http"
 )
 
-//Serv - structure for implementing server interface
-type serv struct{}
-
 //Polly service namespace
-var Polly = serv{}
+var Polly = engine{}
 
 // default configurations for polly
-func (Polly serv) SetDefs() {}
-func (Polly serv) Caches() bool {
+func (Polly engine) SetDefs() {}
+func (Polly engine) Caches() bool {
 	return true
 }
 
-func (Polly serv) Query(req *com.Rq) (com.Sf, com.Rsp) {
+func (Polly engine) Query(req *Rq) (Sf, Rsp) {
 	rC := http.StatusOK // success, from cache
 
-	sF, err := fs.GetFile(req) // checks for cached file
+	sF, err := GetFile(req) // checks for cached file
 	if err != nil {
 		sF, err = awsRequest(req)
 		rC = http.StatusCreated // reset content
@@ -42,15 +38,15 @@ func (Polly serv) Query(req *com.Rq) (com.Sf, com.Rsp) {
 		msg = "AWS Polly query failed, see log for more details."
 	}
 
-	return sF, com.Rsp{
+	return sF, Rsp{
 		Msg:   msg,
 		Err:   err,
 		Code:  rsCd,
 		Heads: heads}
 }
 
-func awsRequest(rQ *com.Rq) (com.Sf, error) {
-	com.Msg("Sending aws request...")
+func awsRequest(rQ *Rq) (Sf, error) {
+	coms.Msg("Sending aws request...")
 	format := "mp3"
 	sample := rQ.Param.SampleRate
 	voice := rQ.Param.Voice
@@ -59,7 +55,6 @@ func awsRequest(rQ *com.Rq) (com.Sf, error) {
 	prf := config.Val("aws-config-profile")
 	var sess *session.Session
 	if len(prf) > 0 {
-		// Force enable Shared Config support
 		sess = session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable, Profile: prf,
 		}))
@@ -78,20 +73,20 @@ func awsRequest(rQ *com.Rq) (com.Sf, error) {
 	to, from := client.SynthesizeSpeechRequest(&params)
 	err := to.Send()
 	if err != nil {
-		com.Msg("AWS Request Failed: " + err.Error())
-		return com.Sf{}, err
+		coms.Msg("AWS Request Failed: " + err.Error())
+		return Sf{}, err
 	}
 	defer from.AudioStream.Close()
-	aQ := com.Aq{
+	aQ := Aq{
 		Txt:    text,
 		Typ:    rQ.Typ,
 		Chars:  *from.RequestCharacters,
 		Buffer: &from.AudioStream,
 	}
-	sF, err := fs.WriteBuffer(aQ, rQ)
+	sF, err := WriteBuffer(aQ, rQ)
 	if err != nil {
-		com.Msg("Error writing file, check cache path settings.")
-		return com.Sf{}, err
+		coms.Msg("Error writing file, check cache path settings.")
+		return Sf{}, err
 	}
 	return sF, nil
 }

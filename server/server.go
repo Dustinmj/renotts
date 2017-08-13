@@ -1,13 +1,11 @@
-package serv
+package server
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dustinmj/renotts/aud"
-	"github.com/dustinmj/renotts/com"
+	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
-	"github.com/dustinmj/renotts/service"
 	"github.com/dustinmj/renotts/upnp"
 	"io/ioutil"
 	"log"
@@ -21,31 +19,51 @@ var mPath string
 var mPort string
 var msgs map[string]string
 
+//Param http request structure
+type Param struct {
+	Text, Voice, SampleRate string
+}
+
+//Rq http request
+type Rq struct {
+	Typ   string
+	Param Param
+	Body  []byte
+}
+
+//Rsp http response
+type Rsp struct {
+	Msg   string
+	Err   error
+	Code  int
+	Heads map[string]string
+}
+
 // Create - start a listening server on port/path
 // p: port to listen, must include (eg :8080)
 // path: path to set up tts server at (eg /tts)
 func Create() {
-	// TODO error checking in port,path
 	mPort = config.Val("port")
 	mPath = config.Val("path")
 	if rsvd(mPath) {
-		com.Msg("Invalid path specified. ", mPath, " is reserved. Rewriting to /tts")
+		coms.Msg("Invalid path specified. ", mPath, " is reserved. Rewriting to /tts")
 		mPath = "tts"
 	}
 	sMux := http.NewServeMux()
 	sMux.HandleFunc("/", handler)
 	var p string
-	ip := com.GetOutboundIP().String()
+	ip := coms.GetOutboundIP().String()
 	if mPort == "0" {
 		listener, err := net.Listen("tcp", ":"+mPort)
 		if err != nil {
-			com.Msg()
+			coms.Msg(err.Error())
+		} else {
+			// if mPort is 0, that's what upnp will advertise, this won't working
+			// without adjusting the library, we can just get the port and
+			// rebind manually
+			p = fmt.Sprintf(":%v", listener.Addr().(*net.TCPAddr).Port)
+			listener.Close()
 		}
-		// if mPort is 0, that's what upnp will advertise, this won't working
-		// without adjusting the library, we can just get the port and
-		// rebind manually
-		p = fmt.Sprintf(":%v", listener.Addr().(*net.TCPAddr).Port)
-		listener.Close()
 	} else {
 		p = fmt.Sprintf(":%v", mPort)
 	}
@@ -53,10 +71,10 @@ func Create() {
 	// were able to attach to `0`
 	upnp.Port = p
 	upnp.Create() // create upnp server now that we know port
-	com.Msg(fmt.Sprintf("Server listening at http://%v%v/%v/polly/", ip, p, mPath))
-	com.Msg(fmt.Sprintf("Help at http://%v%v/", ip, p))
+	coms.Msg(fmt.Sprintf("Server listening at http://%v%v/%v/polly/", ip, p, mPath))
+	coms.Msg(fmt.Sprintf("Help at http://%v%v/", ip, p))
 	if err := http.ListenAndServe(p, sMux); err != nil {
-		com.Exit(71, []byte("Cannot create webserver. "+err.Error()))
+		coms.Exit(71, []byte("Cannot create webserver. "+err.Error()))
 	}
 }
 
@@ -71,7 +89,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	switch r.RequestURI {
 	case "/", "/help", "/help/":
-		w.Write(config.Instruct)
+		w.Write(coms.Instruct)
 		break
 	case upnp.DVPATH:
 		devType(w, r)
@@ -89,15 +107,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func instruct(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	w.Write(config.Instruct)
-}
-
 func servicePath(w http.ResponseWriter, r *http.Request) {
 	s := map[string]string{}
 	// show services
-	for k := range service.AvailServs {
+	for k := range AvailServs {
 		s[k] = "/" + config.Val("path") + "/" + k + "/"
 	}
 	j, _ := json.Marshal(s)
@@ -142,8 +155,7 @@ func tts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if eN.Caches() {
-		//go aud.Play(sF)
-		if err := aud.Play123(sF); err != nil {
+		if err := mpgPlayer.Play(sF); err != nil {
 			reply(w, http.StatusInternalServerError, err.Error())
 		}
 	}
@@ -155,20 +167,20 @@ func typ(in *http.Request) (string, error) {
 	t := filepath.Base(p)
 	// check for extra content in path (2 slashes)...
 	if len(p) > len(t)+2 {
-		return "", errors.New(config.Err["InvalidPath"])
+		return "", errors.New(coms.Err["InvalidPath"])
 	}
 	return t, nil
 }
 
-func mk(in *http.Request, t string) (com.Rq, error) {
+func mk(in *http.Request, t string) (Rq, error) {
 	bd, err := ioutil.ReadAll(in.Body)
 	if err != nil {
-		return com.Rq{}, errors.New(config.Err["ErrorReadingBody"])
+		return Rq{}, errors.New(coms.Err["ErrorReadingBody"])
 	}
-	out := com.Rq{Typ: t, Body: bd}
+	out := Rq{Typ: t, Body: bd}
 	err = json.Unmarshal(bd, &out.Param)
 	if err != nil {
-		return com.Rq{}, err
+		return Rq{}, err
 	}
 	out.Param.Text = fmt.Sprintf("%s", out.Param.Text)
 	// trim text to 3k chars
@@ -198,7 +210,7 @@ func addHead(w http.ResponseWriter, h map[string]string) http.ResponseWriter {
 }
 
 func makeHead(w http.ResponseWriter, c int, t string, a string) http.ResponseWriter {
-	w.Header().Set("Server", com.AppName)
+	w.Header().Set("Server", coms.AppName)
 	w.Header().Set("Content-Type", t)
 	w.Header().Set("Action", a)
 	w.Header().Set("Status", getStatus(c))
