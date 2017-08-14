@@ -9,7 +9,6 @@ import (
 
 type play123 struct {
 	Handle *mpg123.Handle
-	Device *ao.Device
 }
 
 var mpgPlayer = player{}
@@ -33,12 +32,8 @@ func mpgPlay(handle *mpg123.Handle, sF Sf) error {
 	ao.Initialize()
 	defer ao.Shutdown()
 
-	dev := ao.NewLiveDevice(aoSampleFormat(handle))
-	defer dev.Close()
-
 	plays := []play123{
 		play123{
-			Device: dev,
 			Handle: handle}}
 	// if we pad with silence, open a handle for that
 	if isPadded(sF) {
@@ -47,7 +42,6 @@ func mpgPlay(handle *mpg123.Handle, sF Sf) error {
 			return err
 		}
 		silence := play123{
-			Device: dev,
 			Handle: sHandle}
 		if sF.Pad.Before {
 			plays = append([]play123{silence}, plays...)
@@ -57,9 +51,12 @@ func mpgPlay(handle *mpg123.Handle, sF Sf) error {
 		}
 	}
 	for _, p := range plays {
-		if _, err := io.Copy(p.Device, p.Handle); err != nil {
+		dev := ao.NewLiveDevice(aoSampleFormat(p.Handle))
+		if _, err := io.Copy(dev, p.Handle); err != nil {
+			dev.Close()
 			return err
 		}
+		dev.Close()
 	}
 	return nil
 }
