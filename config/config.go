@@ -12,6 +12,10 @@ import (
 	"strconv"
 )
 
+var awsConfigPath = []string{
+	".aws/config",
+	".aws/credentials"}
+
 //HomeDir - maps to user home directory
 var HomeDir string
 
@@ -20,6 +24,7 @@ var defCachePath string
 
 func init() {
 	HomeDir, _ = homedir.Dir()
+	chkAmazonConfig()
 	defConfigPath, _ = filepath.Abs(filepath.Join(HomeDir, ".renotts"))
 	defCachePath, _ = filepath.Abs(filepath.Join(defConfigPath, "cache"))
 	setPaths()
@@ -74,6 +79,16 @@ func chkConfigFile() {
 		err := ioutil.WriteFile(cfg, defConfig, 0744)
 		if err != nil {
 			coms.Msg("Could not create config skeleton:", cfg)
+		}
+	}
+}
+
+func chkAmazonConfig() {
+	// just checking for amazon config setup so we can alert the user
+	for _, v := range awsConfigPath {
+		fp, _ := filepath.Abs(filepath.Join(HomeDir, v))
+		if _, err := os.Stat(fp); os.IsNotExist(err) {
+			coms.Msg("Note: AWS configuration missing:", fp)
 		}
 	}
 }
