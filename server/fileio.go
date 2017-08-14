@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
 	"io"
@@ -54,7 +55,11 @@ func WriteBuffer(aQ Aq, rQ *Rq) (Sf, error) {
 
 //GetFile - return a Sf for the Rq or error if it doesn't exist yet
 func GetFile(rQ *Rq) (Sf, error) {
+	// don't use padding parameter for caching
+	pad := rQ.Param.Padding
+	rQ.Param.Padding = ""
 	fN := FileName(rQ)
+	rQ.Param.Padding = pad
 	fP, err := FullPath(fN)
 	if err != nil {
 		return Sf{}, err
@@ -77,6 +82,10 @@ func FullPath(fN string) (string, error) {
 //FileName - returns the proper filename for caching
 func FileName(rQ *Rq) string {
 	hasher := md5.New()
-	hasher.Write([]byte(rQ.Typ + string(rQ.Body)))
+	jsb, err := json.Marshal(rQ.Param)
+	if err != nil {
+		jsb = rQ.Body
+	}
+	hasher.Write([]byte(rQ.Typ + string(jsb)))
 	return hex.EncodeToString(hasher.Sum(nil)) + ".mp3"
 }

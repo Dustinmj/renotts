@@ -18,8 +18,7 @@ func (Polly engine) Caches() bool {
 }
 
 func (Polly engine) Query(req *Rq) (Sf, Rsp) {
-	rC := http.StatusOK // success, from cache
-
+	rC := http.StatusOK     // success, from cache
 	sF, err := GetFile(req) // checks for cached file
 	if err != nil {
 		sF, err = awsRequest(req)
