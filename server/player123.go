@@ -7,10 +7,15 @@ import (
 	"io"
 )
 
+type play123 struct {
+	Handle *mpg123.Handle
+	Device *ao.Device
+}
+
 var mpgPlayer = player{}
 
 // Play123 execute a play command using mpg123 bindings
-func (mpgPlayer player) Play(sF Sf) error {
+func (mpgPlayer player) play(sF Sf) error {
 	coms.Msg("Playing file: " + sF.Path)
 
 	mpg123.Initialize()
@@ -21,21 +26,51 @@ func (mpgPlayer player) Play(sF Sf) error {
 		return err
 	}
 	defer handle.Close()
+	return mpgPlay(handle, sF)
+}
 
+func mpgPlay(handle *mpg123.Handle, sF Sf) error {
 	ao.Initialize()
 	defer ao.Shutdown()
 
-	dev := ao.NewLiveDevice(AoSampleFormat(handle))
+	dev := ao.NewLiveDevice(aoSampleFormat(handle))
 	defer dev.Close()
 
-	if _, err := io.Copy(dev, handle); err != nil {
-		return err
+	plays := []play123{
+		play123{
+			Device: dev,
+			Handle: handle}}
+	// if we pad with silence, open a device for that
+	if isPadded(sF) {
+		sHandle, err := mpg123.Open(silenceFile)
+		if err != nil {
+			return err
+		}
+		sdev := ao.NewLiveDevice(aoSampleFormat(sHandle))
+		silence := play123{
+			Device: sdev,
+			Handle: sHandle}
+		if sF.Pad.Before {
+			plays = append([]play123{silence}, plays...)
+		}
+		if sF.Pad.After {
+			plays = append(plays, silence)
+		}
+	}
+	for _, p := range plays {
+		if _, err := io.Copy(p.Device, p.Handle); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
+func isPadded(sF Sf) bool {
+	return sF.Pad.After || sF.Pad.Before
+}
+
 // AoSampleFormat Get the ao.SampleFormat from the mpg123.Handle
-func AoSampleFormat(handle *mpg123.Handle) *ao.SampleFormat {
+func aoSampleFormat(handle *mpg123.Handle) *ao.SampleFormat {
 	const bitsPerByte = 8
 
 	rate, channels, encoding := handle.Format()

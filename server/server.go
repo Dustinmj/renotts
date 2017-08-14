@@ -21,7 +21,7 @@ var msgs map[string]string
 
 //Param http request structure
 type Param struct {
-	Text, Voice, SampleRate string
+	Text, Voice, SampleRate, Padding string
 }
 
 //Rq http request
@@ -154,12 +154,30 @@ func tts(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusMethodNotAllowed, rsp.Err.Error())
 		return
 	}
+	// determine if we're padding
+	pad(&rQ, &sF.Pad.Before, &sF.Pad.After)
 	if eN.Caches() {
-		if err := mpgPlayer.Play(sF); err != nil {
+		if err := mpgPlayer.play(sF); err != nil {
 			reply(w, http.StatusInternalServerError, err.Error())
 		}
 	}
 	reply(w, rsp.Code, rsp.Msg)
+}
+
+func pad(rQ *Rq, before *bool, after *bool) {
+	*before = false
+	*after = false
+	switch rQ.Param.Padding {
+	case "Both":
+		*before = true
+		*after = true
+	case "Before":
+		*before = true
+		break
+	case "After":
+		*after = true
+		break
+	}
 }
 
 func typ(in *http.Request) (string, error) {

@@ -16,6 +16,8 @@ be honored if they exist in the main config file from user
 Caches return true if the Sf file returned from query will need to be played,
 it will then be passed to the audio player (mp3);
 return false if the engine handles playing the file internally
+an engine returning false for Caches() will need to deal with Padding
+internally as well.
 */
 type Eng interface {
 	Query(*Rq) (Sf, Rsp)

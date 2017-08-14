@@ -15,8 +15,14 @@ type Sf struct {
 	Q         Aq
 	Path      string
 	Fname     string
+	Pad       padding
 	FromCache bool
-	ForPlayer bool
+	ForPlayer bool // future
+}
+
+type padding struct {
+	Before bool
+	After  bool
 }
 
 //WriteBuffer - writes buffer stream to file system
