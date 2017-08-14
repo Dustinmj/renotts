@@ -158,7 +158,9 @@ func tts(w http.ResponseWriter, r *http.Request) {
 	pad(&rQ, &sF.Pad.Before, &sF.Pad.After)
 	if eN.Caches() {
 		if err := mpgPlayer.play(sF); err != nil {
+			coms.Msg("Unable to play ", sF.Fname, err.Error())
 			reply(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 	}
 	reply(w, rsp.Code, rsp.Msg)
