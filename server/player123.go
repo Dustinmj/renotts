@@ -40,15 +40,14 @@ func mpgPlay(handle *mpg123.Handle, sF Sf) error {
 		play123{
 			Device: dev,
 			Handle: handle}}
-	// if we pad with silence, open a device for that
+	// if we pad with silence, open a handle for that
 	if isPadded(sF) {
 		sHandle, err := mpg123.Open(silenceFile)
 		if err != nil {
 			return err
 		}
-		sdev := ao.NewLiveDevice(aoSampleFormat(sHandle))
 		silence := play123{
-			Device: sdev,
+			Device: dev,
 			Handle: sHandle}
 		if sF.Pad.Before {
 			plays = append([]play123{silence}, plays...)
