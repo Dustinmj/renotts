@@ -2,40 +2,80 @@ package config
 
 import (
 	"github.com/dustinmj/renotts/coms"
-	"github.com/mitchellh/go-homedir"
+	"github.com/dustinmj/renotts/tmplt"
 	"github.com/spf13/viper"
-	"io/ioutil"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
 )
 
+// Config file strings
+const (
+	//AWSPROFILE blah
+	AWSPROFILE = "aws-config-profile"
+	//EXECPLAYER blah
+	EXECPLAYER = "exec-player"
+	//CACHEPATH blah
+	CACHEPATH = "cache-path"
+	//PORT blah
+	PORT = "port"
+	//PATH blah
+	PATH = "path"
+)
+
+// config defaults
+const (
+	defCacheFolder = "cache"
+	defRenoFolder  = ".renotts"
+	defConfigName  = "renotts"
+	defPort        = "0"
+	defPath        = "tts"
+	defConfigFile  = "renotts.toml"
+	defAWSProfile  = "default"
+	defExecPlayer  = "mplayer"
+)
+
+//HomeDir - maps to user home directory
+var homeDir string
+var usr user.User
+
+var configPath string
+var defCachePath string
+
+//SilenceFile silence file full path
+var SilenceFile string
+
+//Smp3 Silence mp3 file
+const Smp3 = "Silence.mp3"
+
 var awsConfigPath = []string{
 	".aws/config",
 	".aws/credentials"}
 
-//HomeDir - maps to user home directory
-var HomeDir string
-
-var defConfigPath string
-var defCachePath string
-
 func init() {
-	HomeDir, _ = homedir.Dir()
+	// get user
+	usr, err := user.Current()
+	if err != nil {
+		coms.Msg("Unable to determine user home directory!!!")
+		homeDir = "."
+	}
+	homeDir = usr.HomeDir
 	chkAmazonConfig()
-	defConfigPath, _ = filepath.Abs(filepath.Join(HomeDir, ".renotts"))
-	defCachePath, _ = filepath.Abs(filepath.Join(defConfigPath, "cache"))
+	configPath, _ = filepath.Abs(filepath.Join(homeDir, defRenoFolder))
+	defCachePath, _ = filepath.Abs(filepath.Join(configPath, defCacheFolder))
 	setPaths()
 	chkConfigFile()
-	viper.SetConfigName("renotts")
-	err := viper.ReadInConfig()
+	viper.SetConfigName(defConfigName)
+	err = viper.ReadInConfig()
 	if err == nil {
-		coms.Msg("Configuration file loaded:", viper.ConfigFileUsed())
+		coms.Msg("RenoTTS Configuration file loaded:", viper.ConfigFileUsed())
 	} else {
-		coms.Msg("Configuration file not found, using defaults.")
+		coms.Msg("RenoTTS Configuration file not found, using defaults.")
 	}
+	chkExecPlayer()
 	// check port
 	setDefs()
 	chkDefs()
@@ -56,60 +96,98 @@ func Val(key string) string {
 	return viper.GetString(key)
 }
 
+//Exists does a config key/value Exists
+func Exists(key string) bool {
+	return viper.IsSet(key)
+}
+
 func setDefs() {
-	viper.SetDefault("port", "0")
-	viper.SetDefault("path", "tts")
-	viper.SetDefault("cachepath", defCachePath)
+	viper.SetDefault(PORT, defPort)
+	viper.SetDefault(PATH, defPath)
+	viper.SetDefault(CACHEPATH, defCachePath)
 }
 
 func setPaths() {
-	viper.AddConfigPath(".")
-	viper.AddConfigPath(defConfigPath)
+	viper.AddConfigPath(configPath)
 }
 
 func chkConfigFile() {
 	// check config file to make sure it exists
-	cfg := filepath.Join(defConfigPath, "renotts.toml")
+	cfg := fullConfigPath()
 	if _, err := os.Stat(cfg); os.IsNotExist(err) {
 		// attempt to make directory
-		if err = os.MkdirAll(defConfigPath, os.ModePerm); err != nil {
-			coms.Msg("Could not create config directory:", defConfigPath)
+		if err = os.MkdirAll(configPath, os.ModePerm); err != nil {
+			coms.Msg("Could not create config directory:", configPath)
 			coms.Exit(73, []byte{})
 		}
-		err := ioutil.WriteFile(cfg, defConfig, 0744)
+		// attempt to create base config file
+		err := createConfig(cfg)
 		if err != nil {
 			coms.Msg("Could not create config skeleton:", cfg)
 		}
 	}
 }
 
+func createConfig(path string) error {
+	// attempt to create base config file
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	dat := tmplt.ConfigData{
+		Awsconfigprofile: defOption(AWSPROFILE, defAWSProfile, true),
+		Port:             defOption(PORT, defPort, false),
+		Path:             defOption(PATH, defPath, false),
+		Execplayer:       defOption(EXECPLAYER, defExecPlayer, true),
+		Cachepath:        defOption(CACHEPATH, defCachePath, false)}
+	tmplt.ParseF(f, tmplt.ConfigFl, dat)
+	return nil
+}
+
+func defOption(label string, value string, commented bool) string {
+	s := ""
+	if commented {
+		s += "#"
+	}
+	s += label + "=\"" + value + "\""
+	return s
+}
+
+func fullConfigPath() string {
+	return filepath.Join(configPath, defConfigFile)
+}
+
 func chkAmazonConfig() {
 	// just checking for amazon config setup so we can alert the user
-	for _, v := range awsConfigPath {
-		fp, _ := filepath.Abs(filepath.Join(HomeDir, v))
-		if _, err := os.Stat(fp); os.IsNotExist(err) {
-			coms.Msg("Note: AWS configuration missing:", fp)
-		}
+	c := ConfigChk.Amazon()
+	for _, t := range c {
+		coms.Msg(t)
 	}
+}
+
+func chkExecPlayer() {
+	// check execplayer settings
+	coms.Msg(ConfigChk.Player())
 }
 
 // check user input
 func chkDefs() {
 	// check cache path to make sure it's writeable
-	if _, err := os.Stat(Val("cachepath")); os.IsNotExist(err) {
+	if _, err := os.Stat(Val(CACHEPATH)); os.IsNotExist(err) {
 		// attempt to make directory
-		if err = os.MkdirAll(Val("cachepath"), os.ModePerm); err != nil {
-			coms.Msg("Cache directory", Val("cachepath"), "not writeable!")
+		if err = os.MkdirAll(Val(CACHEPATH), os.ModePerm); err != nil {
+			coms.Msg("Cache directory", Val(CACHEPATH), "not writeable!")
 			coms.Exit(73, []byte{})
 		}
 	}
 	// check port to make sure it's correct
 	badP := func() {
-		coms.Msg("Invalid port", Val("port"))
+		coms.Msg("Invalid port", Val(PORT))
 		coms.Exit(78, []byte{})
 	}
 	re := regexp.MustCompile("[\x3A]?(?P<pnum>\\d{1,5})")
-	m := re.FindStringSubmatch(Val("port"))
+	m := re.FindStringSubmatch(Val(PORT))
 	if len(m) < 2 {
 		badP()
 	}
@@ -117,11 +195,11 @@ func chkDefs() {
 	if err != nil {
 		badP()
 	}
-	SetOverride("port", strconv.Itoa(mi))
+	SetOverride(PORT, strconv.Itoa(mi))
 	// setup path -- we just remove beginning slash
-	p := Val("path")
+	p := Val(PATH)
 	if p[0:1] == "/" {
 		p = p[1:]
 	}
-	SetOverride("path", path.Clean(p))
+	SetOverride(PATH, path.Clean(p))
 }

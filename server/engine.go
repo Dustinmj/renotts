@@ -2,25 +2,15 @@ package server
 
 import (
 	"errors"
-	"github.com/dustinmj/renotts/coms"
 )
 
-//AvailServs - map of services available
-var AvailServs = map[string]Eng{
+//AvailServs map of services available
+var AvailServs = map[string]eng{
 	"polly": Polly}
 
-/*Eng tts engine interface
-Query returns the sound file and http response object
-SetDefs allows engine to write it's own defaults, these can then be used and will
-be honored if they exist in the main config file from user
-Caches return true if the Sf file returned from query will need to be played,
-it will then be passed to the audio player (mp3);
-return false if the engine handles playing the file internally
-an engine returning false for Caches() will need to deal with Padding
-internally as well.
-*/
-type Eng interface {
-	Query(*Rq) (Sf, Rsp)
+//Eng tts engine interface
+type eng interface {
+	Query(*request) (*string, error)
 	SetDefs()
 	Caches() bool
 }
@@ -28,12 +18,12 @@ type Eng interface {
 //Serv - structure for implementing engine interface
 type engine struct{}
 
-func enGet(t string) (e Eng, er error) {
+func enGet(t string) (e eng, er error) {
 	for n, s := range AvailServs {
 		if n == t {
 			s.SetDefs()
 			return s, nil
 		}
 	}
-	return nil, errors.New(coms.Err["NoService"])
+	return nil, errors.New(errBadServce)
 }

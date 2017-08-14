@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
+	"github.com/dustinmj/renotts/player"
+	"github.com/dustinmj/renotts/tmplt"
 	"github.com/dustinmj/renotts/upnp"
 	"io/ioutil"
 	"log"
@@ -15,9 +17,14 @@ import (
 	"strconv"
 )
 
-var mPath string
-var mPort string
-var msgs map[string]string
+// error messages
+const (
+	errInvalidJSON = "cannot read JSON data in POST body"
+	errReadingBody = "could not retrieve POST body"
+	errBadServce   = "service does not exist"
+	errInvalidPath = "invalid path specified"
+	errNoText      = "no text specified"
+)
 
 //Param http request structure
 type Param struct {
@@ -25,26 +32,37 @@ type Param struct {
 }
 
 //Rq http request
-type Rq struct {
-	Typ   string
-	Param Param
-	Body  []byte
+type request struct {
+	Typ    string
+	Param  Param
+	Unique []byte
+	Body   []byte
 }
 
 //Rsp http response
-type Rsp struct {
+type response struct {
 	Msg   string
 	Err   error
 	Code  int
 	Heads map[string]string
 }
 
+// how long to wait for a busy player before returning an error, in seconds
+const busyTimeout = 5
+
+var mPath string
+var mPort string
+var ip string
+var baseURI string
+var ttsEndpoint string
+var msgs map[string]string
+
 // Create - start a listening server on port/path
 // p: port to listen, must include (eg :8080)
 // path: path to set up tts server at (eg /tts)
 func Create() {
-	mPort = config.Val("port")
-	mPath = config.Val("path")
+	mPort = config.Val(config.PORT)
+	mPath = config.Val(config.PATH)
 	if rsvd(mPath) {
 		coms.Msg("Invalid path specified. ", mPath, " is reserved. Rewriting to /tts")
 		mPath = "tts"
@@ -52,7 +70,7 @@ func Create() {
 	sMux := http.NewServeMux()
 	sMux.HandleFunc("/", handler)
 	var p string
-	ip := coms.GetOutboundIP().String()
+	ip = coms.GetOutboundIP().String()
 	if mPort == "0" {
 		listener, err := net.Listen("tcp", ":"+mPort)
 		if err != nil {
@@ -70,9 +88,13 @@ func Create() {
 	// tell upnp where to find us, this may be random if we
 	// were able to attach to `0`
 	upnp.Port = p
+	mPort = p
+	baseURI = fmt.Sprintf("http://%v%v", ip, p)
 	upnp.Create() // create upnp server now that we know port
-	coms.Msg(fmt.Sprintf("Server listening at http://%v%v/%v/polly/", ip, p, mPath))
-	coms.Msg(fmt.Sprintf("Help at http://%v%v/", ip, p))
+	ttsEndpoint = fmt.Sprintf("%v/%v/polly/", baseURI, mPath)
+	coms.Msg("TTS Endpoint:", ttsEndpoint)
+	coms.Msg(fmt.Sprintf("Test Interface: %v/test/", baseURI))
+	coms.Msg(fmt.Sprintf("URL List: %v", baseURI))
 	if err := http.ListenAndServe(p, sMux); err != nil {
 		coms.Exit(71, []byte("Cannot create webserver. "+err.Error()))
 	}
@@ -88,7 +110,7 @@ func logg(handler http.Handler) http.Handler {
 func handler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	switch r.RequestURI {
-	case "/", "/help", "/help/":
+	case "/help", "/help/":
 		w.Write(coms.Instruct)
 		break
 	case upnp.DVPATH:
@@ -102,16 +124,63 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	case "/" + mPath + "/polly", "/" + mPath + "/polly/":
 		tts(w, r)
 		break
+	case "/test/", "/test":
+		printTest(w, r)
+		break
+	case "/check", "/check/":
+		printChecks(w, r)
+		break
+	case "/":
+		printPaths(w, r)
+		break
 	default:
 		makeHead(w, http.StatusNotFound, "text/plain", "tts").Write([]byte("Endpoint not found. Please check your path configuration."))
 	}
+}
+
+func printTest(w http.ResponseWriter, r *http.Request) {
+	host := fmt.Sprintf("%v%v", ip, mPort)
+	path := "/" + mPath + "/polly/"
+	data := tmplt.TestData{
+		Path: path,
+		Host: host,
+		Common: tmplt.Common{
+			Title:   "RenoTTS Tester",
+			BaseURI: baseURI}}
+	tmplt.ParseHTM(w, tmplt.TestHTML, data)
+}
+
+func printPaths(w http.ResponseWriter, r *http.Request) {
+	var dat [][]string
+	dat = append(dat, []string{"TTS Endpoint", ttsEndpoint})
+	dat = append(dat, []string{"Test Interface", fmt.Sprintf("%v/test/", baseURI)})
+	dat = append(dat, []string{"Check Config", fmt.Sprintf("%v/check/", baseURI)})
+	dat = append(dat, []string{"Ping Status", fmt.Sprintf("%v/status/", baseURI)})
+	dat = append(dat, []string{"List Services", fmt.Sprintf("%v/services/", baseURI)})
+	dat = append(dat, []string{"UPnP Device Description", fmt.Sprintf("%v%v", baseURI, upnp.DVPATH)})
+	data := tmplt.URLList{
+		Data: dat,
+		Common: tmplt.Common{
+			Title:   "Available URI Endpoints:",
+			BaseURI: baseURI}}
+	tmplt.ParseHTM(w, tmplt.URLListHTML, data)
+}
+
+func printChecks(w http.ResponseWriter, r *http.Request) {
+	out := config.ConfigChk.All()
+	data := tmplt.List{
+		Data: out,
+		Common: tmplt.Common{
+			Title:   "Configuration Check",
+			BaseURI: baseURI}}
+	tmplt.ParseHTM(w, tmplt.ListHTML, data)
 }
 
 func servicePath(w http.ResponseWriter, r *http.Request) {
 	s := map[string]string{}
 	// show services
 	for k := range AvailServs {
-		s[k] = "/" + config.Val("path") + "/" + k + "/"
+		s[k] = "/" + config.Val(config.PATH) + "/" + k + "/"
 	}
 	j, _ := json.Marshal(s)
 	makeHead(w, http.StatusOK, "application/json", "services").Write(j)
@@ -133,7 +202,7 @@ func devType(w http.ResponseWriter, r *http.Request) {
 
 func tts(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	t, err := typ(r)
+	t, err := rtype(r)
 	if err != nil {
 		reply(w, http.StatusBadRequest, err.Error())
 		return
@@ -148,78 +217,107 @@ func tts(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	sF, rsp := eN.Query(&rQ)
-	if rsp.Err != nil {
-		w = addHead(w, rsp.Heads)
-		reply(w, http.StatusMethodNotAllowed, rsp.Err.Error())
+	file, err := eN.Query(rQ)
+	if err != nil {
+		reply(w, http.StatusMethodNotAllowed, err.Error())
 		return
 	}
 	// determine if we're padding
-	pad(&rQ, &sF.Pad.Before, &sF.Pad.After)
+	before, after := pad(rQ)
+	// if required, execute with player
 	if eN.Caches() {
-		if err := mpgPlayer.play(sF); err != nil {
-			coms.Msg("Unable to play ", sF.Fname, err.Error())
-			reply(w, http.StatusInternalServerError, err.Error())
+		p := player.GetPlayer()
+		if err := playFile(p, *file, before, after); err != nil {
+			reply(w, http.StatusFailedDependency, "error")
 			return
 		}
 	}
-	reply(w, rsp.Code, rsp.Msg)
+	reply(w, http.StatusOK, "success")
 }
 
-func pad(rQ *Rq, before *bool, after *bool) {
-	*before = false
-	*after = false
-	switch rQ.Param.Padding {
+func playFile(mpgPlayer player.SPlayer, file string, before bool, after bool) error {
+	// if busy, queue the file for later
+	if mpgPlayer.Busy() {
+		mpgPlayer.Queue(file, before, after)
+		return nil
+	}
+	if err := mpgPlayer.Play(file, before, after); err != nil {
+		coms.Msg("Unable to play ", file, err.Error())
+		return err
+	}
+	return nil
+}
+
+func pad(req *request) (before bool, after bool) {
+	switch req.Param.Padding {
 	case "Both":
-		*before = true
-		*after = true
+		before = true
+		after = true
 	case "Before":
-		*before = true
+		before = true
 		break
 	case "After":
-		*after = true
+		after = true
 		break
 	}
+	return
 }
 
-func typ(in *http.Request) (string, error) {
+func rtype(in *http.Request) (string, error) {
 	p := in.URL.Path[len(mPath)+1:]
 	t := filepath.Base(p)
 	// check for extra content in path (2 slashes)...
 	if len(p) > len(t)+2 {
-		return "", errors.New(coms.Err["InvalidPath"])
+		return "", errors.New(errInvalidPath)
 	}
 	return t, nil
 }
 
-func mk(in *http.Request, t string) (Rq, error) {
+func mk(in *http.Request, t string) (*request, error) {
 	bd, err := ioutil.ReadAll(in.Body)
 	if err != nil {
-		return Rq{}, errors.New(coms.Err["ErrorReadingBody"])
+		return nil, errors.New(errReadingBody)
 	}
-	out := Rq{Typ: t, Body: bd}
+	out := request{Typ: t, Body: bd}
 	err = json.Unmarshal(bd, &out.Param)
 	if err != nil {
-		return Rq{}, err
+		return nil, err
 	}
 	out.Param.Text = fmt.Sprintf("%s", out.Param.Text)
 	// trim text to 3k chars
 	if len(out.Param.Text) > 3000 {
 		out.Param.Text = out.Param.Text[:3000]
+	} else if len(out.Param.Text) < 1 {
+		return nil, errors.New(errNoText)
 	}
-	return out, nil
+	// set unique
+	p := out.Param
+	p.Padding = ""
+	b, err := json.Marshal(p)
+	if err != nil {
+		return nil, err
+	}
+	out.Unique = b
+	return &out, nil
 }
 
 func rsvd(p string) bool {
 	switch p {
-	case "", "status", "services", "help":
+	case "", "status", "services", "help", "check":
 		return true
 	}
 	return false
 }
 
+type msg struct {
+	Message string
+}
+
 func reply(w http.ResponseWriter, code int, txt string) {
-	makeHead(w, code, "text/plain", "tts").Write([]byte(txt))
+	t := msg{
+		Message: txt}
+	b, _ := json.Marshal(t)
+	makeHead(w, code, "application/json", "tts").Write(b)
 }
 
 func addHead(w http.ResponseWriter, h map[string]string) http.ResponseWriter {
@@ -232,9 +330,10 @@ func addHead(w http.ResponseWriter, h map[string]string) http.ResponseWriter {
 func makeHead(w http.ResponseWriter, c int, t string, a string) http.ResponseWriter {
 	w.Header().Set("Server", coms.AppName)
 	w.Header().Set("Content-Type", t)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Expose-Headers", "Server,Content-Type,Access-Control-Expose-Headers,Access-Control-Allow-Origin,Action,Status,Content-Length,Date")
 	w.Header().Set("Action", a)
 	w.Header().Set("Status", getStatus(c))
-	//w.Header().Set("Content-Location", config.Val("path") + "/polly/")
 	w.WriteHeader(c)
 	return w
 }

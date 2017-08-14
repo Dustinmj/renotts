@@ -5,7 +5,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/polly"
 	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
-	"net/http"
+	"github.com/dustinmj/renotts/file"
+)
+
+// error messages
+const (
+	errAWSFailed = "aws request failed"
 )
 
 //Polly service namespace
@@ -17,41 +22,25 @@ func (Polly engine) Caches() bool {
 	return true
 }
 
-func (Polly engine) Query(req *Rq) (Sf, Rsp) {
-	rC := http.StatusOK     // success, from cache
-	sF, err := GetFile(req) // checks for cached file
+func (Polly engine) Query(req *request) (*string, error) {
+	sF, err := file.GetFile(req.Unique) // checks for cached file
 	if err != nil {
 		sF, err = awsRequest(req)
-		rC = http.StatusCreated // reset content
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	heads := map[string]string{"Via": polly.ServiceName}
-
-	var msg string
-	var rsCd int
-	if err == nil {
-		rsCd = rC
-		msg = "Query Successful"
-	} else {
-		rsCd = http.StatusInternalServerError
-		msg = "AWS Polly query failed, see log for more details."
-	}
-
-	return sF, Rsp{
-		Msg:   msg,
-		Err:   err,
-		Code:  rsCd,
-		Heads: heads}
+	return sF, nil
 }
 
-func awsRequest(rQ *Rq) (Sf, error) {
+func awsRequest(req *request) (*string, error) {
 	coms.Msg("Sending aws request...")
 	format := "mp3"
-	sample := rQ.Param.SampleRate
-	voice := rQ.Param.Voice
-	text := rQ.Param.Text
+	sample := req.Param.SampleRate
+	voice := req.Param.Voice
+	text := req.Param.Text
 	// look for aws profile settings
-	prf := config.Val("aws-config-profile")
+	prf := config.Val(config.AWSPROFILE)
 	var sess *session.Session
 	if len(prf) > 0 {
 		sess = session.Must(session.NewSessionWithOptions(session.Options{
@@ -72,20 +61,14 @@ func awsRequest(rQ *Rq) (Sf, error) {
 	to, from := client.SynthesizeSpeechRequest(&params)
 	err := to.Send()
 	if err != nil {
-		coms.Msg("AWS Request Failed: " + err.Error())
-		return Sf{}, err
+		coms.Msg("AWS Request Failed.")
+		return nil, err
 	}
 	defer from.AudioStream.Close()
-	aQ := Aq{
-		Txt:    text,
-		Typ:    rQ.Typ,
-		Chars:  *from.RequestCharacters,
-		Buffer: &from.AudioStream,
-	}
-	sF, err := WriteBuffer(aQ, rQ)
+	sF, err := file.WriteBuffer(&from.AudioStream, req.Unique)
 	if err != nil {
 		coms.Msg("Error writing file, check cache path settings.")
-		return Sf{}, err
+		return nil, err
 	}
 	return sF, nil
 }
