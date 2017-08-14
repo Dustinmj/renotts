@@ -55,11 +55,7 @@ func WriteBuffer(aQ Aq, rQ *Rq) (Sf, error) {
 
 //GetFile - return a Sf for the Rq or error if it doesn't exist yet
 func GetFile(rQ *Rq) (Sf, error) {
-	// don't use padding parameter for caching
-	pad := rQ.Param.Padding
-	rQ.Param.Padding = ""
 	fN := FileName(rQ)
-	rQ.Param.Padding = pad
 	fP, err := FullPath(fN)
 	if err != nil {
 		return Sf{}, err
@@ -79,10 +75,17 @@ func FullPath(fN string) (string, error) {
 	return filepath.Abs(filepath.Join(config.Val("cachepath"), fN))
 }
 
+//cleanParam - cleans unwanted entities from param so not used in caching
+func cleanParam(p Param) Param {
+	p.Padding = ""
+	return p
+}
+
 //FileName - returns the proper filename for caching
 func FileName(rQ *Rq) string {
+	p := cleanParam(rQ.Param)
 	hasher := md5.New()
-	jsb, err := json.Marshal(rQ.Param)
+	jsb, err := json.Marshal(p)
 	if err != nil {
 		jsb = rQ.Body
 	}
