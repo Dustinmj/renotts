@@ -4,8 +4,10 @@ import (
 	"github.com/dustinmj/renotts/coms"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 )
@@ -13,13 +15,19 @@ import (
 //HomeDir - maps to user home directory
 var HomeDir string
 
+var defConfigPath string
+var defCachePath string
+
 func init() {
 	HomeDir, _ = homedir.Dir()
+	defConfigPath, _ = filepath.Abs(filepath.Join(HomeDir, ".renotts"))
+	defCachePath, _ = filepath.Abs(filepath.Join(defConfigPath, "cache"))
 	setPaths()
+	chkConfigFile()
 	viper.SetConfigName("renotts")
 	err := viper.ReadInConfig()
 	if err == nil {
-		coms.Msg("Configuration file loaded: " + viper.ConfigFileUsed())
+		coms.Msg("Configuration file loaded:", viper.ConfigFileUsed())
 	} else {
 		coms.Msg("Configuration file not found, using defaults.")
 	}
@@ -46,12 +54,28 @@ func Val(key string) string {
 func setDefs() {
 	viper.SetDefault("port", "0")
 	viper.SetDefault("path", "tts")
-	viper.SetDefault("cachepath", path.Clean("."))
+	viper.SetDefault("cachepath", defCachePath)
 }
 
 func setPaths() {
 	viper.AddConfigPath(".")
-	viper.AddConfigPath(HomeDir + "/.renotts/")
+	viper.AddConfigPath(defConfigPath)
+}
+
+func chkConfigFile() {
+	// check config file to make sure it exists
+	cfg := filepath.Join(defConfigPath, "renotts.toml")
+	if _, err := os.Stat(cfg); os.IsNotExist(err) {
+		// attempt to make directory
+		if err = os.MkdirAll(defConfigPath, os.ModePerm); err != nil {
+			coms.Msg("Could not create config directory:", defConfigPath)
+			coms.Exit(73, []byte{})
+		}
+		err := ioutil.WriteFile(cfg, defConfig, 0744)
+		if err != nil {
+			coms.Msg("Could not create config skeleton:", cfg)
+		}
+	}
 }
 
 // check user input
