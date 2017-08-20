@@ -4,16 +4,6 @@
 	"GodepVersion": "v79",
 	"Deps": [
 		{
-			"ImportPath": "bitbucket.org/weberc2/media/ao",
-			"Comment": "null-8",
-			"Rev": "22c150c92ea7cd1400889f2fe6c4d00195bb3570"
-		},
-		{
-			"ImportPath": "bitbucket.org/weberc2/media/mpg123",
-			"Comment": "null-8",
-			"Rev": "22c150c92ea7cd1400889f2fe6c4d00195bb3570"
-		},
-		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
 			"Comment": "v1.10.20-3-gae48d73",
 			"Rev": "ae48d7372b4f879cfe994d7a037a6a822cafdde0"
@@ -149,6 +139,10 @@
 			"Rev": "ae48d7372b4f879cfe994d7a037a6a822cafdde0"
 		},
 		{
+			"ImportPath": "github.com/bobertlo/go-mpg123/mpg123",
+			"Rev": "d2238336e6db92fd8538d0bc5e2df85c5f2062fc"
+		},
+		{
 			"ImportPath": "github.com/fromkeith/gossdp",
 			"Rev": "49870f3db38de953e84a5ac69766b7058233805f"
 		},
@@ -161,6 +155,10 @@
 			"ImportPath": "github.com/go-ini/ini",
 			"Comment": "v1.28.0-1-g3d73f4b",
 			"Rev": "3d73f4b845efdf9989fffd4b4e562727744a34ba"
+		},
+		{
+			"ImportPath": "github.com/gordonklaus/portaudio",
+			"Rev": "e66c30a9c4ca11f93538cf8c004831bfb76f3838"
 		},
 		{
 			"ImportPath": "github.com/hashicorp/hcl",
