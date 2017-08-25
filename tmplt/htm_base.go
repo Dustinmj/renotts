@@ -29,6 +29,11 @@ var baseHTML = `<!DOCTYPE HTML>
     a:hover,a:active{color:#333}
     ul li a{padding-left:10px}
     ul{padding:0}
+    pre>code{display:inline-block;padding: 1rem 1.5rem;white-space: pre;}
+    code{color:#333;font-family: monospace,monospace;padding: .2rem .5rem;margin: 0 .2rem;font-size: 90%;white-space: nowrap;background: #F1F1F1;border: 1px solid #E1E1E1;border-radius: 4px;}
+    p{color:#333;max-width:600px;}
+    ol{max-width:600px;color:#333}
+    ol li{padding:.5em 0 0}
   </style>
 </head>
 <body>

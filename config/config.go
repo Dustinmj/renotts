@@ -38,9 +38,12 @@ const (
 	defExecPlayer  = "mplayer"
 )
 
-//HomeDir - maps to user home directory
+//AppPath current application path
+var AppPath string
+
+//homeDir maps to user home directory
 var homeDir string
-var usr user.User
+var usr *user.User
 
 var configPath string
 var defCachePath string
@@ -57,12 +60,14 @@ var awsConfigPath = []string{
 
 func init() {
 	// get user
-	usr, err := user.Current()
+	var err error
+	usr, err = user.Current()
 	if err != nil {
 		coms.Msg("Unable to determine user home directory!!!")
 		homeDir = "."
 	}
 	homeDir = usr.HomeDir
+	AppPath, _ = os.Executable()
 	chkAmazonConfig()
 	configPath, _ = filepath.Abs(filepath.Join(homeDir, defRenoFolder))
 	defCachePath, _ = filepath.Abs(filepath.Join(configPath, defCacheFolder))
@@ -99,6 +104,21 @@ func Val(key string) string {
 //Exists does a config key/value Exists
 func Exists(key string) bool {
 	return viper.IsSet(key)
+}
+
+//Path gets current config path
+func Path() string {
+	return configPath
+}
+
+//File gets full path to config file
+func File() string {
+	return filepath.Join(configPath, defConfigFile)
+}
+
+//User gets current user name
+func User() string {
+	return usr.Username
 }
 
 func setDefs() {

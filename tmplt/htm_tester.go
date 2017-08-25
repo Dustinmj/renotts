@@ -29,7 +29,7 @@ var TestHTML = `{{define "content"}}
         </select>
         <br />
         <label for="tts">Text</label>
-        <input type="text" id="tts" name="tts" />
+        <input type="text" id="tts" name="tts" value="Testing Reno TTS." />
         <br />
         <label class="pad" for="padBefore">Silence Before</label>
         <input type="checkbox" id="padBefore" name="padBefore" />

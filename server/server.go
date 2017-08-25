@@ -90,11 +90,9 @@ func Create() {
 	upnp.Port = p
 	mPort = p
 	baseURI = fmt.Sprintf("http://%v%v", ip, p)
-	upnp.Create() // create upnp server now that we know port
 	ttsEndpoint = fmt.Sprintf("%v/%v/polly/", baseURI, mPath)
-	coms.Msg("TTS Endpoint:", ttsEndpoint)
-	coms.Msg(fmt.Sprintf("Test Interface: %v/test/", baseURI))
-	coms.Msg(fmt.Sprintf("URL List: %v", baseURI))
+	upnp.Create() // create upnp server now that we know port
+	coms.Msg(fmt.Sprintf("Instructions/Options: visit %v in a browser.", baseURI))
 	if err := http.ListenAndServe(p, sMux); err != nil {
 		coms.Exit(71, []byte("Cannot create webserver. "+err.Error()))
 	}
@@ -112,6 +110,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.RequestURI {
 	case upnp.DVPATH:
 		devType(w, r)
+		break
+	case "/boot", "/boot/":
+		showBootSetup(w, r)
+		break
 	case "/status", "/status/":
 		status(w, r)
 		break
@@ -149,12 +151,13 @@ func printTest(w http.ResponseWriter, r *http.Request) {
 
 func printPaths(w http.ResponseWriter, r *http.Request) {
 	var dat [][]string
-	dat = append(dat, []string{"TTS Endpoint", ttsEndpoint})
 	dat = append(dat, []string{"Test Interface", fmt.Sprintf("%v/test/", baseURI)})
-	dat = append(dat, []string{"Check Config", fmt.Sprintf("%v/check/", baseURI)})
+	dat = append(dat, []string{"Boot Configuration Instructions", fmt.Sprintf("%v/boot/", baseURI)})
+	dat = append(dat, []string{"Check Configuration", fmt.Sprintf("%v/check/", baseURI)})
 	dat = append(dat, []string{"Ping Status", fmt.Sprintf("%v/status/", baseURI)})
 	dat = append(dat, []string{"List Services", fmt.Sprintf("%v/services/", baseURI)})
 	dat = append(dat, []string{"UPnP Device Description", fmt.Sprintf("%v%v", baseURI, upnp.DVPATH)})
+	dat = append(dat, []string{"TTS Endpoint", ttsEndpoint})
 	data := tmplt.URLList{
 		Data: dat,
 		Common: tmplt.Common{
@@ -181,6 +184,21 @@ func servicePath(w http.ResponseWriter, r *http.Request) {
 	}
 	j, _ := json.Marshal(s)
 	makeHead(w, http.StatusOK, "application/json", "services").Write(j)
+}
+
+func showBootSetup(w http.ResponseWriter, r *http.Request) {
+	logFile := "/tmp/RenoTTS.log"
+	data := tmplt.BootData{
+		User:           config.User(),
+		ConfigFile:     config.File(),
+		AppPath:        config.AppPath,
+		LogFile:        logFile,
+		ConfigCheckURL: fmt.Sprintf("%v/check/", baseURI),
+		TestURL:        fmt.Sprintf("%v/test/", baseURI),
+		Common: tmplt.Common{
+			Title:   "Startup Configuration",
+			BaseURI: baseURI}}
+	tmplt.ParseHTM(w, tmplt.BootHTML, data)
 }
 
 func status(w http.ResponseWriter, r *http.Request) {
@@ -300,7 +318,7 @@ func mk(in *http.Request, t string) (*request, error) {
 
 func rsvd(p string) bool {
 	switch p {
-	case "", "status", "services", "check", "test":
+	case "", "status", "services", "check", "test", "boot":
 		return true
 	}
 	return false

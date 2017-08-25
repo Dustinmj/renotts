@@ -24,7 +24,7 @@ func chkElevated() {
 	if err != nil {
 		return
 	}
-	if user.Uid == "0" || user.Name == "root" || user.Name == "su" || user.Name == "sudoer" {
+	if user.Uid == "0" || user.Username == "root" {
 		fmt.Println("")
 		fmt.Println(warn)
 		fmt.Println("")

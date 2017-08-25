@@ -40,6 +40,17 @@ type ConfigData struct {
 	Awsconfigprofile string
 }
 
+//BootData - used for html boot config instructions
+type BootData struct {
+	User           string
+	AppPath        string
+	LogFile        string
+	ConfigFile     string
+	ConfigCheckURL string
+	TestURL        string
+	Common         Common
+}
+
 //ParseHTM -- parses a template against base html template
 func ParseHTM(wr io.Writer, tmpl string, data interface{}) error {
 	b, err := htmltemplate.New("").Parse(baseHTML)
