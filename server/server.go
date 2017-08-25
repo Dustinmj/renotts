@@ -110,9 +110,6 @@ func logg(handler http.Handler) http.Handler {
 func handler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	switch r.RequestURI {
-	case "/help", "/help/":
-		w.Write(coms.Instruct)
-		break
 	case upnp.DVPATH:
 		devType(w, r)
 	case "/status", "/status/":
@@ -303,7 +300,7 @@ func mk(in *http.Request, t string) (*request, error) {
 
 func rsvd(p string) bool {
 	switch p {
-	case "", "status", "services", "help", "check":
+	case "", "status", "services", "check", "test":
 		return true
 	}
 	return false
