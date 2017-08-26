@@ -26,13 +26,13 @@ func (ConfigChk chk) Config() []string {
 	// check config file to make sure it exists
 	cfg := fullConfigPath()
 	if _, err := os.Stat(cfg); os.IsNotExist(err) {
-		s = append(s, "missing config file: "+cfg)
+		s = append(s, "missing RenoTTS configuration file: "+cfg)
 	}
-	s = append(s, "found renotts config file: "+cfg)
+	s = append(s, "found RenoTTS configuration file: "+cfg)
 	// check config values
 	vals := viper.AllKeys()
 	for _, k := range vals {
-		s = append(s, "** current Configuration -> "+k+": "+Val(k))
+		s = append(s, "---> current configuration ---> "+k+": "+Val(k))
 	}
 	return s
 }
@@ -53,7 +53,7 @@ func (ConfigChk chk) Amazon() []string {
 	for _, v := range awsConfigPath {
 		fp, _ := filepath.Abs(filepath.Join(homeDir, v))
 		if _, err := os.Stat(fp); os.IsNotExist(err) {
-			s = append(s, "missing AWS config file: "+fp)
+			s = append(s, "missing required AWS config file: "+fp)
 		} else {
 			s = append(s, "found required AWS config file: "+fp)
 		}
@@ -68,7 +68,7 @@ func (ConfigChk chk) Player() string {
 	// if execplayer option is set, make sure we have access to it
 	p := Val(EXECPLAYER)
 	if _, err := exec.LookPath(p); err == nil {
-		return "execPlayer found: " + p + ", will play files through " + p
+		return EXECPLAYER + " found: " + p + ", will play files through " + p
 	}
-	return "execPlayer set but not found: " + p + ", will play files internally"
+	return EXECPLAYER + " set but not found: " + p + ", will play files internally"
 }

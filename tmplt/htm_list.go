@@ -3,7 +3,7 @@ package tmplt
 //ListHTML - Baic List Template
 var ListHTML = `
 {{define "content"}}
-<ul>
+<ul class="surround">
     {{ range $k, $v := .Data }}
        <li>{{$v}}</li>
     {{ end }}

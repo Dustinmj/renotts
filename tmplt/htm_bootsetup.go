@@ -3,11 +3,13 @@ package tmplt
 //BootHTML - template for showing boot configuration clues
 var BootHTML = `
 {{define "content"}}
-    <h3>For Debian Based Systems <small>Rasbian, Jesse, Chip OS, Ubuntu, Debian, etc.</small></h3>
+    <h2>For Debian Based Systems <small>Rasbian, Jesse, Chip OS, Ubuntu, Debian, etc.</small></h2>
     <p>RenoTTS <strong>should not be run as root user</strong>. Please follow these directions to run RenoTTS as <{{.User}}> each time the system boots.</p>
     <p><strong>1) Check and Test your setup:</strong>
-    <br /><br /><a href="{{.ConfigCheckURL}}">{{.ConfigCheckURL}}</a>
-    <br /><a href="{{.TestURL}}">{{.TestURL}}</a></pre></p>
+    <ul>
+        <li><a href="{{.ConfigCheckURL}}">{{.ConfigCheckURL}}</a></li>
+        <li><a href="{{.TestURL}}">{{.TestURL}}</a></li>
+    </ul>
     <p><strong>2) Open /etc/rc.local:</strong>
     <pre><code>sudo nano /etc/rc.local</code></pre>
     </p>

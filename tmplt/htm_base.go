@@ -5,35 +5,45 @@ var baseHTML = `<!DOCTYPE HTML>
 <html lang="en-US">
 <head>
   <title>{{.Common.Title}}</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700" rel="stylesheet">
   <style type="text/css">
-    /*! RenoTTS Tester */
-    body{background-color:#FFF;padding-left:40px;color:#009fdb;padding-bottom:50px;}
-    div{clear:both;padding-top:10px}
-    div#output,div#request{display:none}
-    p.txt{color:#666}
-    p.txt span{float:left;clear:both;padding:.25em 0}
-    h1{height:60px;line-height:60px}
-    h1 img{float:left;vertical-align:middle;width:60px;height:60px;margin-right:1em}
-    p.txt span strong{padding-right:10px}
-    input,select{background:#efefef;padding:.25em;border:1px solid #acacac;width:30em}
-    select{width:30.5em}
-    input[type=button]{width:10em;display:block;margin-top:2em;background-color:#009fdb;color:#FFF}
-    label{display:inline-block;width:6em;padding:1em 0 0}
-    label.pad{width:auto;padding:1em 1em 0 0}
-    label.pad+input[type=checkbox]{width:auto;display:inline-block;margin-right:3em}
-    h2{color:#333;font-size:1.3em}
-    div#output{min-height:300px}
-    ul li{list-style-type:none;padding:0 0 1em;color:#333}
-    a,a:visited{color:#369}
-    a:hover,a:active{color:#333}
-    ul li a{padding-left:10px}
-    ul{padding:0}
-    pre>code{display:inline-block;padding: 1rem 1.5rem;white-space: pre;}
-    code{color:#333;font-family: monospace,monospace;padding: .2rem .5rem;margin: 0 .2rem;font-size: 90%;white-space: nowrap;background: #F1F1F1;border: 1px solid #E1E1E1;border-radius: 4px;}
-    p{color:#333;max-width:600px;}
-    ol{max-width:600px;color:#333}
-    ol li{padding:.5em 0 0}
-    input[type=button]{cursor:pointer}
+  body{font-family:Roboto,HelveticaNeue,"Helvetica Neue",Helvetica,Arial,sans-serif;background-color:#FFF;color:#333;padding:0 0 50px 0;margin:0;font-size:18px;}
+  body>div{padding:0 0 0 40px;margin:0;}
+  h1{height:60px;line-height:60px;background-color:#009Fdb;color:#FFF;position:relative;left:-40px;padding:10px 10px 10px 40px;width:100%;margin:0 0 30px 0;}
+  h1 img{float:left;vertical-align:middle;width:60px;height:60px;margin-right:1em;}
+  h2{color:#333;font-size:1.3em}
+  div#tester div{clear:both;padding-top:10px}
+  div#output,div#request{display:none}
+  div#output{min-height:300px}
+  div#tester p.txt{color:#666}
+  div#tester p.txt span{float:left;clear:both;padding:.25em 0}
+  div#tester p.txt span strong{padding-right:10px}
+  div#tester p.txt span strong:after{content:":"}
+  input,select{background:#efefef;padding:.25em;border:1px solid #acacac;width:30em}
+  select{width:30.5em}
+  input[type=button]{width:10em;display:block;margin-top:2em;background-color:#009fdb;color:#FFF}
+  label{display:inline-block;width:6em;padding:.5em .5em .5em 0;color:#009Fdb;}
+  label.pad{width:auto;padding:1em 1em 0 0}
+  label.pad+input[type=checkbox]{width:auto;display:inline-block;margin-right:3em}
+  ul.surround li{font-size:90%;max-width:600px;white-space:wrap;background:#F1F1F1;border:1px solid #E1E1E1;border-radius:4px;padding:.2rem .5rem;margin:0 0 1rem 0;}
+  ul.surround li::first-letter, ul li strong::first-letter{text-transform: uppercase;}
+  ul{padding:0;margin:0;}
+  ul li a{font-size:90%;white-space:nowrap;background:#F1F1F1;border:1px solid #E1E1E1;border-radius:4px;padding:.2rem .5rem;margin-left:.5rem;}
+  ul li a:hover{background:#F0F0F0;}
+  ul li{list-style-type:none;padding:0 0 1.25em;color:#333}
+  ul li strong{color:#009fdb;}
+  ul li strong:after{content:":"}
+  a,a:visited{color:#343434;cursor:pointer;}
+  a:hover,a:active{color:#666666}
+  pre>code{display:inline-block;padding: 1rem 1.5rem;white-space: pre;}
+  code{color:#333;font-family: monospace,monospace;padding: .2rem .5rem;margin: 0 .2rem;font-size: 90%;white-space: nowrap;background: #F1F1F1;border: 1px solid #E1E1E1;border-radius: 4px;}
+  p{color:#333;max-width:600px;}
+  ol{max-width:600px;color:#333}
+  ol li{padding:.5em 0 0}
+  input[type=button]{cursor:pointer}
+  h2 small{display:block;font-size:.6em;font-weight:normal;color:#009fdb;}
+  footer{margin:40px 0 0 40px;}
+  footer p{font-size:.75rem;color:#66666;}
   </style>
 </head>
 <body>
@@ -41,6 +51,9 @@ var baseHTML = `<!DOCTYPE HTML>
 {{.Common.Title}}</h1>
 {{ template "content" .}}
 </div>
+<footer>
+    <p>RenoTTS &copy;2017 Dustin Jorge | Licensed under the terms of the <a href="https://opensource.org/licenses/MIT">MIT License</a>.</p>
+</footer>
 {{ template "javascript" .}}
 </body>
 </html>`
