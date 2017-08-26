@@ -7,4 +7,4 @@ var URLListHTML = `
     {{ range $k, $v := .Data }}
        <li><strong>{{index $v 0}}</strong><a href="{{index $v 1}}">{{index $v 1}}</a></li>
     {{ end }}
-</ul>{{end}}`
+</ul>{{end}}{{define "javascript"}}{{end}}`

@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // error messages
@@ -107,6 +108,11 @@ func logg(handler http.Handler) http.Handler {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+	// handle preflights
+	if r.Header.Get("Access-Control-Request-Method") == http.MethodPost {
+		sendOptions(w, r)
+		return
+	}
 	switch r.RequestURI {
 	case upnp.DVPATH:
 		devType(w, r)
@@ -135,6 +141,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	default:
 		makeHead(w, http.StatusNotFound, "text/plain", "tts").Write([]byte("Endpoint not found. Please check your path configuration."))
 	}
+}
+
+func sendOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Write(nil)
 }
 
 func printTest(w http.ResponseWriter, r *http.Request) {
@@ -308,6 +321,7 @@ func mk(in *http.Request, t string) (*request, error) {
 	// set unique
 	p := out.Param
 	p.Padding = ""
+	p.Text = strings.ToLower(p.Text)
 	b, err := json.Marshal(p)
 	if err != nil {
 		return nil, err
@@ -346,11 +360,15 @@ func makeHead(w http.ResponseWriter, c int, t string, a string) http.ResponseWri
 	w.Header().Set("Server", coms.AppName)
 	w.Header().Set("Content-Type", t)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Expose-Headers", "Server,Content-Type,Access-Control-Expose-Headers,Access-Control-Allow-Origin,Action,Status,Content-Length,Date")
+	w.Header().Set("Access-Control-Expose-Headers", getOpenHeaders())
 	w.Header().Set("Action", a)
 	w.Header().Set("Status", getStatus(c))
 	w.WriteHeader(c)
 	return w
+}
+
+func getOpenHeaders() string {
+	return "Server,Content-Type,Access-Control-Expose-Headers,Access-Control-Allow-Origin,Action,Status,Content-Length,Date"
 }
 
 func getStatus(code int) string {

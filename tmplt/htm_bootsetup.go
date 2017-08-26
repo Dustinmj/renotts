@@ -15,10 +15,9 @@ var BootHTML = `
     <pre><code># Start RenoTTS as {{.User}}
 su {{.User}} -c '{{.AppPath}} >> {{.LogFile}} 2>&1 &'</code></pre>
     </p>
-    <p><strong>4) Save and close rc.local</strong></p>
-    <p><strong>5) Make sure {{.User}} is a member of the audio group.</strong>
+    <p><strong>4) Make sure {{.User}} is a member of the audio group.</strong>
     <pre><code>sudo adduser {{.User}} audio</code></pre></p>
-    <p><strong>6) Reboot and test</strong>
+    <p><strong>5) Reboot and test</strong>
     <pre><code>sudo reboot now</code></pre>
     <p><strong>Please note:</strong></p>
     <ol>
@@ -27,8 +26,10 @@ su {{.User}} -c '{{.AppPath}} >> {{.LogFile}} 2>&1 &'</code></pre>
         <li>If you are having problems, check the log file at {{.LogFile}}. This file will be erased after every boot.</li>
         <li>RenoTTS configuration file will live at <strong>{{.ConfigFile}}</strong>.</li>
         <li>Reno cache path will be as set in RenoTTS configuration file and must be writable by {{.User}}.</li>
-        <li>If you haven't specified a specific port in your configuration, you will not know what port RenoTTS is on but UPnP implementations (such as the Smarthings handlers) will be able to find RenoTTS just fine.</li>
+        <li>If you haven't specified a specific port in your configuration, you will not know what port RenoTTS is on
+        but UPnP implementations (such as the Smarthings handlers) will be able to find RenoTTS just fine.
+        To find what port RenoTTS is running on, view the log file at {{.LogFile}}, however, if you've chosen not to
+        specify a port the port will change each time RenoTTS starts.</li>
     </ol>
-    <p>sudo alsactl init, sudo adduser dustin audio</p>
-{{end}}
+{{end}}{{define "javascript"}}{{end}}
 `

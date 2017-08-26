@@ -7,4 +7,4 @@ var ListHTML = `
     {{ range $k, $v := .Data }}
        <li>{{$v}}</li>
     {{ end }}
-</ul>{{end}}`
+</ul>{{end}}{{define "javascript"}}{{end}}`
