@@ -6,10 +6,11 @@ UPNP enabled TTS service for interfacing with AWS Polly to be installed on unix-
 Built for use with SmartThings using handlers available in my repo, but could be used for many other purposes.
 
 ## Features
-- UPNP
-- Caching
-- Plays files internally
-- Handles all AWS communication
+- UPNP discoverable.
+- Caches files for future playback.
+- Plays files internally or externally.
+- Handles all AWS communication.
+- Super simple configuration.
 
 ## Build dependancies (outside godeps):
 ```
@@ -18,9 +19,7 @@ libmpg123-dev
 ```
 
 ## Uses/Credits
-- [go-toml](https://github.com/pelletier/go-toml)
 - [viper](https://github.com/spf13/viper)
-- [go-homedir](https://github.com/mitchellh/go-homedir)
 - [AWS Polly](https://github.com/aws/aws-sdk-go/tree/master/service/polly)
 - [gossdp](https://github.com/fromkeith/gossdp)
 - [go-portaudio](https://github.com/gordonklaus/portaudio)
