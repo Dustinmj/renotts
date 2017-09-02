@@ -25,7 +25,7 @@ func main() {
 }
 
 func chkElevated() {
-	warn := "!!!!! RenoTTS appears to be running as root user. This is not recommended. RenoTTS should not be run as root user. !!!!!"
+	warn := "!!!!! RenoTTS appears to be running as root user. This is not recommended. !!!!!"
 	user, err := user.Current()
 	if err != nil {
 		return
