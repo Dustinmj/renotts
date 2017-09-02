@@ -15,8 +15,8 @@ import (
 	"time"
 )
 
-// rough milliseconds added as padding when requested
-const paddingMillis = 3000
+// multiplier for padding when silence is needed
+const paddingMillis = 2000
 
 type dec123 struct {
 	Decoder *mpg123.Decoder
@@ -223,7 +223,7 @@ func unload(t *track) {
 }
 
 func getSilence(mill int, rate int64) []byte {
-	return make([]byte, rate)
+	return make([]byte, int(float64(rate)*float64(mill/1000)))
 }
 
 func format(dec *mpg123.Decoder, file string) error {

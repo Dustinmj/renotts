@@ -6,16 +6,18 @@ import (
 	"fmt"
 	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
+	"github.com/dustinmj/renotts/file"
 	"github.com/dustinmj/renotts/player"
 	"github.com/dustinmj/renotts/tmplt"
-	"github.com/dustinmj/renotts/upnp"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // error messages
@@ -51,6 +53,12 @@ type response struct {
 // how long to wait for a busy player before returning an error, in seconds
 const busyTimeout = 5
 
+// how long to wait after unsuccessful ip address resolution to try against, in seconds
+const ipDelay = 6
+
+// how many times to check for ip address resolution before giving up
+const ipCheckLimit = 20
+
 var mPath string
 var mPort string
 var ip string
@@ -58,10 +66,22 @@ var baseURI string
 var ttsEndpoint string
 var msgs map[string]string
 
-// Create - start a listening server on port/path
-// p: port to listen, must include (eg :8080)
-// path: path to set up tts server at (eg /tts)
+// Create - start a listening server
 func Create() {
+	// check to make sure we can get outbound ip...
+	ip = getOutboundIP().String()
+	try := 0
+	for ip == "127.0.0.1" {
+		if try < ipCheckLimit {
+			coms.Msg(fmt.Sprintf("Could not reliably determine ip, trying again in %v seconds...", ipDelay))
+			time.Sleep(time.Second * ipDelay) // block
+			try++
+			ip = getOutboundIP().String()
+		} else {
+			coms.Msg("Could not determine IP address. Giving up.")
+			os.Exit(2)
+		}
+	}
 	mPort = config.Val(config.PORT)
 	mPath = config.Val(config.PATH)
 	if rsvd(mPath) {
@@ -71,7 +91,6 @@ func Create() {
 	sMux := http.NewServeMux()
 	sMux.HandleFunc("/", handler)
 	var p string
-	ip = coms.GetOutboundIP().String()
 	if mPort == "0" {
 		listener, err := net.Listen("tcp", ":"+mPort)
 		if err != nil {
@@ -86,13 +105,10 @@ func Create() {
 	} else {
 		p = fmt.Sprintf(":%v", mPort)
 	}
-	// tell upnp where to find us, this may be random if we
-	// were able to attach to `0`
-	upnp.Port = p
 	mPort = p
 	baseURI = fmt.Sprintf("http://%v%v", ip, p)
 	ttsEndpoint = fmt.Sprintf("%v/%v/polly/", baseURI, mPath)
-	upnp.Create() // create upnp server now that we know port
+	StartUPNP() // create upnp server now that we know port
 	coms.Msg(fmt.Sprintf("Instructions/Options: visit %v in a browser.", baseURI))
 	if err := http.ListenAndServe(p, sMux); err != nil {
 		coms.Exit(71, []byte("Cannot create webserver. "+err.Error()))
@@ -114,7 +130,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.RequestURI {
-	case upnp.DVPATH:
+	case upnpdtp:
 		devType(w, r)
 		break
 	case "/boot", "/boot/":
@@ -169,7 +185,7 @@ func printPaths(w http.ResponseWriter, r *http.Request) {
 	dat = append(dat, []string{"Check Configuration", fmt.Sprintf("%v/check/", baseURI)})
 	dat = append(dat, []string{"Ping Status", fmt.Sprintf("%v/status/", baseURI)})
 	dat = append(dat, []string{"List Services", fmt.Sprintf("%v/services/", baseURI)})
-	dat = append(dat, []string{"UPnP Device Description", fmt.Sprintf("%v%v", baseURI, upnp.DVPATH)})
+	dat = append(dat, []string{"UPnP Device Description", fmt.Sprintf("%v%v", baseURI, upnpdtp)})
 	dat = append(dat, []string{"TTS Endpoint", ttsEndpoint})
 	data := tmplt.URLList{
 		Data: dat,
@@ -204,10 +220,11 @@ func showBootSetup(w http.ResponseWriter, r *http.Request) {
 	data := tmplt.BootData{
 		User:           config.User(),
 		ConfigFile:     config.File(),
-		AppPath:        config.AppPath,
+		AppPath:        config.AppPath(),
 		LogFile:        logFile,
 		ConfigCheckURL: fmt.Sprintf("%v/check/", baseURI),
 		TestURL:        fmt.Sprintf("%v/test/", baseURI),
+		ServiceFile:    file.SystemdPath,
 		Common: tmplt.Common{
 			Title:   "Startup Configuration",
 			BaseURI: baseURI}}
@@ -225,7 +242,17 @@ func status(w http.ResponseWriter, r *http.Request) {
 
 func devType(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	makeHead(w, http.StatusOK, "application/xml", "device-type").Write(upnp.GetDD())
+	data := tmplt.UpnpDevDesc{
+		DeviceType:   upnpdt,
+		FriendlyName: upnpfn,
+		Manufacturer: upnpman,
+		ModelNumber:  upnpmod,
+		UUID:         upnpuuid,
+		Services: []tmplt.UpnpService{
+			tmplt.UpnpService{
+				Path: ttsEndpoint}}}
+	w = makeHead(w, http.StatusOK, "application/xml", "device-type")
+	tmplt.ParseF(w, tmplt.DevDescFl, data)
 }
 
 func tts(w http.ResponseWriter, r *http.Request) {
@@ -373,4 +400,33 @@ func getOpenHeaders() string {
 
 func getStatus(code int) string {
 	return strconv.Itoa(code) + " " + string(http.StatusText(code))
+}
+
+//getOutboundIP - Get preferred outbound ip of this machine
+func getOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return net.ParseIP("127.0.0.1")
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
+}
+
+//getMacAddr - Get mac address of something on this system
+func getMacAddr() ([]string, error) {
+	ifas, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	var as []string
+	for _, ifa := range ifas {
+		a := ifa.HardwareAddr.String()
+		if a != "" {
+			as = append(as, a)
+		}
+	}
+	return as, nil
 }

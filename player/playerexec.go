@@ -3,6 +3,7 @@ package player
 import (
 	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
+	"github.com/dustinmj/renotts/file"
 	"os/exec"
 )
 
@@ -72,7 +73,7 @@ func (execPlayer eplayer) execCommand(cmd string, path string) error {
 }
 
 func (execPlayer eplayer) playSilence(player string) error {
-	if err := execPlayer.execCommand(player, config.SilenceFile); err != nil {
+	if err := execPlayer.execCommand(player, file.SilencePath); err != nil {
 		return err
 	}
 	return nil

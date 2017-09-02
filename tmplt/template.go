@@ -31,6 +31,18 @@ type TestData struct {
 	Common Common
 }
 
+//BootData - used for html boot config instructions
+type BootData struct {
+	User           string
+	AppPath        string
+	LogFile        string
+	ConfigFile     string
+	ConfigCheckURL string
+	TestURL        string
+	ServiceFile    string
+	Common         Common
+}
+
 //ConfigData - used for default config file
 type ConfigData struct {
 	Port             string
@@ -40,15 +52,27 @@ type ConfigData struct {
 	Awsconfigprofile string
 }
 
-//BootData - used for html boot config instructions
-type BootData struct {
-	User           string
-	AppPath        string
-	LogFile        string
-	ConfigFile     string
-	ConfigCheckURL string
-	TestURL        string
-	Common         Common
+//SysD - used for systemd file built for user
+type SysD struct {
+	User    string
+	AppPath string
+	AppName string
+}
+
+//UpnpDevDesc - UPNP Device Description data
+type UpnpDevDesc struct {
+	DeviceType   string
+	FriendlyName string
+	Manufacturer string
+	ModelNumber  string
+	SerialNumber string
+	UUID         string
+	Services     []UpnpService
+}
+
+//UpnpService - UPNP service structure
+type UpnpService struct {
+	Path string
 }
 
 //ParseHTM -- parses a template against base html template

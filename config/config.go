@@ -39,7 +39,8 @@ const (
 )
 
 //AppPath current application path
-var AppPath string
+var appPath string
+var appName string
 
 //homeDir maps to user home directory
 var homeDir string
@@ -47,12 +48,6 @@ var usr *user.User
 
 var configPath string
 var defCachePath string
-
-//SilenceFile silence file full path
-var SilenceFile string
-
-//Smp3 Silence mp3 file
-const Smp3 = "Silence.mp3"
 
 var awsConfigPath = []string{
 	".aws/config",
@@ -66,12 +61,17 @@ func init() {
 		coms.Msg("Unable to determine user home directory!!!")
 		homeDir = "."
 	}
+	// get directory info
 	homeDir = usr.HomeDir
-	AppPath, _ = os.Executable()
+	appPath, _ = os.Executable()
+	appName = os.Args[0]
+	// look for amazon config files
 	chkAmazonConfig()
 	configPath, _ = filepath.Abs(filepath.Join(homeDir, defRenoFolder))
 	defCachePath, _ = filepath.Abs(filepath.Join(configPath, defCacheFolder))
+	// setup Viper config path
 	setPaths()
+	// make sure config file exists
 	chkConfigFile()
 	viper.SetConfigName(defConfigName)
 	err = viper.ReadInConfig()
@@ -80,8 +80,9 @@ func init() {
 	} else {
 		coms.Msg("RenoTTS Configuration file not found, using defaults.")
 	}
+	// check external player if needed
 	chkExecPlayer()
-	// check port
+	// set and check defaults
 	setDefs()
 	chkDefs()
 }
@@ -119,6 +120,16 @@ func File() string {
 //User gets current user name
 func User() string {
 	return usr.Username
+}
+
+//AppPath gets path to executable
+func AppPath() string {
+	return appPath
+}
+
+//AppName gets current application name
+func AppName() string {
+	return appName
 }
 
 func setDefs() {
