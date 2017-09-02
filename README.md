@@ -1,5 +1,5 @@
 # renotts 
-[https://dustinmj.github.io/renotts/](https://dustinmj.github.io/renotts/)
+[http://renotts.com/](https://renotts.com/)
 
 UPNP enabled TTS service for interfacing with AWS Polly to be installed on unix-based SOC or PC. Enables 'talking speaker' speech synthesis device.
 
