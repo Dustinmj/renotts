@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/dustinmj/renotts/coms"
 	"github.com/dustinmj/renotts/config"
 	"github.com/dustinmj/renotts/file"
 	"github.com/dustinmj/renotts/server"
+	"os"
 	"os/user"
 )
 
@@ -13,9 +15,13 @@ func main() {
 	chkElevated()
 	// get config
 	cfg := config.Get()
-	server.Create(cfg.Val(config.PORT), cfg.Val(config.PATH), cfg)
+	server.Create(cfg)
 	file.Setup(cfg)
-	server.Serve()
+	err := server.Serve() // blocking
+	if err != nil {
+		coms.Msg(err.Error())
+		os.Exit(2)
+	}
 }
 
 func chkElevated() {

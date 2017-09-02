@@ -13,7 +13,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -68,15 +67,19 @@ var msgs map[string]string
 var cfg config.Cfg
 
 // Create - initialize server
-func Create(port string, path string, conf config.Cfg) {
-	mPort = port
-	mPath = path
+func Create(conf config.Cfg) {
+	mPort = conf.Val(config.PORT)
+	mPath = conf.Val(config.PATH)
 	cfg = conf
 }
 
 // Serve - start listing... blocking
-func Serve() {
-	ip = determineIP().String() // blocking
+func Serve() error {
+	netIP, err := determineIP()
+	if err != nil {
+		return err
+	}
+	ip = netIP.String()
 	if rsvd(mPath) {
 		coms.Msg("Invalid path specified. ", mPath, " is reserved. Rewriting to /tts")
 		mPath = "tts"
@@ -87,14 +90,13 @@ func Serve() {
 	if mPort == "0" {
 		listener, err := net.Listen("tcp", ":"+mPort)
 		if err != nil {
-			coms.Msg(err.Error())
-		} else {
-			// if mPort is 0, that's what upnp will advertise, this won't working
-			// without adjusting the library, we can just get the port and
-			// rebind manually
-			p = fmt.Sprintf(":%v", listener.Addr().(*net.TCPAddr).Port)
-			listener.Close()
+			return err
 		}
+		// if mPort is 0, that's what upnp will advertise, this won't working
+		// without adjusting the library, we can just bind to get the port and
+		// rebind again later
+		p = fmt.Sprintf(":%v", listener.Addr().(*net.TCPAddr).Port)
+		listener.Close()
 	} else {
 		p = fmt.Sprintf(":%v", mPort)
 	}
@@ -104,11 +106,12 @@ func Serve() {
 	StartUPNP(mPort) // create upnp server now that we know port
 	coms.Msg(fmt.Sprintf("Instructions/Options: visit %v in a browser.", baseURI))
 	if err := http.ListenAndServe(p, sMux); err != nil {
-		coms.Exit(71, []byte("Cannot create webserver. "+err.Error()))
+		return errors.New("Cannot create webserver. " + err.Error())
 	}
+	return nil
 }
 
-func determineIP() net.IP {
+func determineIP() (*net.IP, error) {
 	// check to make sure we can get outbound ip...
 	ip := getOutboundIP()
 	try := 0
@@ -119,11 +122,10 @@ func determineIP() net.IP {
 			try++
 			ip = getOutboundIP()
 		} else {
-			coms.Msg("Could not determine IP address. Giving up.")
-			os.Exit(2)
+			return nil, errors.New("could not determine ip address")
 		}
 	}
-	return ip
+	return &ip, nil
 }
 
 func logg(handler http.Handler) http.Handler {
