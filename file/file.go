@@ -21,26 +21,27 @@ const (
 	systemd = "renotts.service"
 )
 
-func init() {
+//Setup setup file requirements
+func Setup(cfg config.Cfg) {
 	// attempt to ensure silence.mp3 is expanded to cachepath
-	SilencePath = filepath.Join(config.Val(config.CACHEPATH), smp3)
-	putSilence()
+	SilencePath = filepath.Join(cfg.Cache(), smp3)
+	putSilence(SilencePath, cfg.Cache())
 	// ensure init.d utilities have been created
-	SystemdPath = filepath.Join(config.Path(), systemd)
-	putInitD(SystemdPath)
+	SystemdPath = filepath.Join(cfg.Path(), systemd)
+	putInitD(SystemdPath, cfg)
 }
 
 // expand silence file
-func putSilence() {
+func putSilence(silence string, cache string) {
 	// expand silence.mp3 to file if necessary
-	if !chkFile(SilencePath) {
-		if err := RestoreAsset(config.Val(config.CACHEPATH), smp3); err != nil {
+	if !chkFile(silence) {
+		if err := RestoreAsset(cache, smp3); err != nil {
 			coms.Msg("Unable to restore Silence.mp3 to cachepath!")
 		}
 	}
 }
 
-func putInitD(path string) error {
+func putInitD(path string, cfg config.Cfg) error {
 	// attempt to create
 	var f *os.File
 	for i := 0; i < 2; i++ {
@@ -66,9 +67,9 @@ func putInitD(path string) error {
 	f.Truncate(0)
 	// create new init.d
 	data := tmplt.SysD{
-		User:    config.User(),
-		AppName: config.AppName(),
-		AppPath: config.AppPath()}
+		User:    cfg.User(),
+		AppName: cfg.AppName(),
+		AppPath: cfg.AppPath()}
 	return tmplt.ParseF(f, tmplt.SystemdFl, data)
 }
 

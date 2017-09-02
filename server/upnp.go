@@ -46,16 +46,16 @@ func init() {
 }
 
 //StartUPNP - Start the UPNP server
-func StartUPNP() {
+func StartUPNP(ttsPort string) {
 	go func() {
 		defer func() {
 			sig <- 1
 		}()
-		cast()
+		cast(ttsPort)
 	}()
 }
 
-func cast() error {
+func cast(ttsPort string) error {
 	s, err := gossdp.NewSsdp(nil)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func cast() error {
 	// store ip for future checks
 	ip = getOutboundIP().String()
 	// create server defaults
-	serverDef := defs(ip)
+	serverDef := defs(ip, ttsPort)
 	s.AdvertiseServer(serverDef) // library re-adverts correctly
 	for {
 		select {
@@ -77,7 +77,7 @@ func cast() error {
 			if ip != getOutboundIP().String() {
 				s.RemoveServer(upnpuuid)
 				ip = getOutboundIP().String()
-				serverDef = defs(ip)
+				serverDef = defs(ip, ttsPort)
 				s.AdvertiseServer(serverDef)
 			}
 			break
@@ -85,11 +85,11 @@ func cast() error {
 	}
 }
 
-func defs(ip string) gossdp.AdvertisableServer {
+func defs(ip string, port string) gossdp.AdvertisableServer {
 	return gossdp.AdvertisableServer{
 		ServiceType: upnpdt,
 		DeviceUuid:  upnpuuid,
-		Location:    "http://" + ip + mPort + upnpdtp,
+		Location:    "http://" + ip + port + upnpdtp,
 		MaxAge:      upnpmaxage,
 	}
 }

@@ -65,25 +65,18 @@ var ip string
 var baseURI string
 var ttsEndpoint string
 var msgs map[string]string
+var cfg config.Cfg
 
-// Create - start a listening server
-func Create() {
-	// check to make sure we can get outbound ip...
-	ip = getOutboundIP().String()
-	try := 0
-	for ip == "127.0.0.1" {
-		if try < ipCheckLimit {
-			coms.Msg(fmt.Sprintf("Could not reliably determine ip, trying again in %v seconds...", ipDelay))
-			time.Sleep(time.Second * ipDelay) // block
-			try++
-			ip = getOutboundIP().String()
-		} else {
-			coms.Msg("Could not determine IP address. Giving up.")
-			os.Exit(2)
-		}
-	}
-	mPort = config.Val(config.PORT)
-	mPath = config.Val(config.PATH)
+// Create - initialize server
+func Create(port string, path string, conf config.Cfg) {
+	mPort = port
+	mPath = path
+	cfg = conf
+}
+
+// Serve - start listing... blocking
+func Serve() {
+	ip = determineIP().String() // blocking
 	if rsvd(mPath) {
 		coms.Msg("Invalid path specified. ", mPath, " is reserved. Rewriting to /tts")
 		mPath = "tts"
@@ -108,11 +101,29 @@ func Create() {
 	mPort = p
 	baseURI = fmt.Sprintf("http://%v%v", ip, p)
 	ttsEndpoint = fmt.Sprintf("%v/%v/polly/", baseURI, mPath)
-	StartUPNP() // create upnp server now that we know port
+	StartUPNP(mPort) // create upnp server now that we know port
 	coms.Msg(fmt.Sprintf("Instructions/Options: visit %v in a browser.", baseURI))
 	if err := http.ListenAndServe(p, sMux); err != nil {
 		coms.Exit(71, []byte("Cannot create webserver. "+err.Error()))
 	}
+}
+
+func determineIP() net.IP {
+	// check to make sure we can get outbound ip...
+	ip := getOutboundIP()
+	try := 0
+	for ip.String() == "127.0.0.1" {
+		if try < ipCheckLimit {
+			coms.Msg(fmt.Sprintf("Could not reliably determine ip, trying again in %v seconds...", ipDelay))
+			time.Sleep(time.Second * ipDelay) // block
+			try++
+			ip = getOutboundIP()
+		} else {
+			coms.Msg("Could not determine IP address. Giving up.")
+			os.Exit(2)
+		}
+	}
+	return ip
 }
 
 func logg(handler http.Handler) http.Handler {
@@ -134,16 +145,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		devType(w, r)
 		break
 	case "/boot", "/boot/":
-		showBootSetup(w, r)
+		showBootSetup(w, r, cfg)
 		break
 	case "/status", "/status/":
 		status(w, r)
 		break
 	case "/services", "/services/":
-		servicePath(w, r)
+		servicePath(w, r, cfg.Val(config.PATH))
 		break
 	case "/" + mPath + "/polly", "/" + mPath + "/polly/":
-		tts(w, r)
+		tts(w, r, cfg)
 		break
 	case "/test/", "/test":
 		printTest(w, r)
@@ -205,22 +216,22 @@ func printChecks(w http.ResponseWriter, r *http.Request) {
 	tmplt.ParseHTM(w, tmplt.ListHTML, data)
 }
 
-func servicePath(w http.ResponseWriter, r *http.Request) {
+func servicePath(w http.ResponseWriter, r *http.Request, path string) {
 	s := map[string]string{}
 	// show services
 	for k := range AvailServs {
-		s[k] = "/" + config.Val(config.PATH) + "/" + k + "/"
+		s[k] = "/" + path + "/" + k + "/"
 	}
 	j, _ := json.Marshal(s)
 	makeHead(w, http.StatusOK, "application/json", "services").Write(j)
 }
 
-func showBootSetup(w http.ResponseWriter, r *http.Request) {
+func showBootSetup(w http.ResponseWriter, r *http.Request, cfg config.Cfg) {
 	logFile := "/tmp/RenoTTS.log"
 	data := tmplt.BootData{
-		User:           config.User(),
-		ConfigFile:     config.File(),
-		AppPath:        config.AppPath(),
+		User:           cfg.User(),
+		ConfigFile:     cfg.File(),
+		AppPath:        cfg.AppPath(),
 		LogFile:        logFile,
 		ConfigCheckURL: fmt.Sprintf("%v/check/", baseURI),
 		TestURL:        fmt.Sprintf("%v/test/", baseURI),
@@ -255,7 +266,7 @@ func devType(w http.ResponseWriter, r *http.Request) {
 	tmplt.ParseF(w, tmplt.DevDescFl, data)
 }
 
-func tts(w http.ResponseWriter, r *http.Request) {
+func tts(w http.ResponseWriter, r *http.Request, cfg config.Cfg) {
 	defer r.Body.Close()
 	t, err := rtype(r)
 	if err != nil {
@@ -272,7 +283,7 @@ func tts(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	file, err := eN.Query(rQ)
+	file, err := eN.Query(rQ, cfg)
 	if err != nil {
 		reply(w, http.StatusMethodNotAllowed, err.Error())
 		return
@@ -281,8 +292,8 @@ func tts(w http.ResponseWriter, r *http.Request) {
 	before, after := pad(rQ)
 	// if required, execute with player
 	if eN.Caches() {
-		p := player.GetPlayer()
-		if err := playFile(p, *file, before, after); err != nil {
+		p := player.GetPlayer(cfg)
+		if err := playFile(p, *file, before, after, cfg); err != nil {
 			reply(w, http.StatusFailedDependency, "error")
 			return
 		}
@@ -290,13 +301,13 @@ func tts(w http.ResponseWriter, r *http.Request) {
 	reply(w, http.StatusOK, "success")
 }
 
-func playFile(mpgPlayer player.SPlayer, file string, before bool, after bool) error {
+func playFile(mpgPlayer player.SPlayer, file string, before bool, after bool, cfg config.Cfg) error {
 	// if busy, queue the file for later
 	if mpgPlayer.Busy() {
 		mpgPlayer.Queue(file, before, after)
 		return nil
 	}
-	if err := mpgPlayer.Play(file, before, after); err != nil {
+	if err := mpgPlayer.Play(file, before, after, cfg.Cache()); err != nil {
 		coms.Msg("Unable to play ", file, err.Error())
 		return err
 	}

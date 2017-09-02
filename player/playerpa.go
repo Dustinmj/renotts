@@ -41,11 +41,11 @@ var mpgPlayer = mplayer{}
 var done sync.WaitGroup
 var mpgplaying bool
 
-func (mpgPlayer mplayer) Play(path string, padB bool, padA bool) error {
-	return mpgPlayer.playAudio(path, padB, padA, false)
+func (mpgPlayer mplayer) Play(path string, padB bool, padA bool, cache string) error {
+	return mpgPlayer.playAudio(path, padB, padA, false, cache)
 }
 
-func (mpgPlayer mplayer) playAudio(path string, padB bool, padA bool, fromQueue bool) error {
+func (mpgPlayer mplayer) playAudio(path string, padB bool, padA bool, fromQueue bool, cache string) error {
 	if mpgplaying && !fromQueue {
 		return errors.New("portaudio is busy")
 	}
@@ -103,7 +103,7 @@ func (mpgPlayer mplayer) playAudio(path string, padB bool, padA bool, fromQueue 
 		next := mpgPlayerQueue[0]
 		mpgPlayerQueue = mpgPlayerQueue[1:]
 		// block for next queued file
-		return mpgPlayer.playAudio(next.Path, next.Before, next.After, true)
+		return mpgPlayer.playAudio(next.Path, next.Before, next.After, true, cache)
 	}
 
 	// call this directly before closing

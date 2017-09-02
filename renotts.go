@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/dustinmj/renotts/config"
+	"github.com/dustinmj/renotts/file"
 	"github.com/dustinmj/renotts/server"
 	"os/user"
 )
@@ -9,7 +11,11 @@ import (
 func main() {
 	// A simple warning about running RenoTTS as elevated user
 	chkElevated()
-	server.Create()
+	// get config
+	cfg := config.Get()
+	server.Create(cfg.Val(config.PORT), cfg.Val(config.PATH), cfg)
+	file.Setup(cfg)
+	server.Serve()
 }
 
 func chkElevated() {

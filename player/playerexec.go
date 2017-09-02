@@ -2,7 +2,6 @@ package player
 
 import (
 	"github.com/dustinmj/renotts/coms"
-	"github.com/dustinmj/renotts/config"
 	"github.com/dustinmj/renotts/file"
 	"os/exec"
 )
@@ -14,9 +13,8 @@ var execPlayer = eplayer{}
 var execPlayerQueue = []playerQueueFile{}
 var execIsPlaying bool
 
-func (execPlayer eplayer) Play(path string, padB bool, padA bool) error {
+func (execPlayer eplayer) Play(path string, padB bool, padA bool, player string) error {
 	execIsPlaying = true
-	player := config.Val(config.EXECPLAYER)
 	coms.Msg("Playing file", "via", player+":", path)
 	// before silence
 	if padB {
@@ -41,7 +39,7 @@ func (execPlayer eplayer) Play(path string, padB bool, padA bool) error {
 	if len(execPlayerQueue) > 0 {
 		next := execPlayerQueue[0]
 		execPlayerQueue = execPlayerQueue[1:]
-		execPlayer.Play(next.Path, next.Before, next.After)
+		execPlayer.Play(next.Path, next.Before, next.After, player)
 	}
 	return nil
 }

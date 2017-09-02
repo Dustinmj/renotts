@@ -4,19 +4,18 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"github.com/dustinmj/renotts/coms"
-	"github.com/dustinmj/renotts/config"
 	"io"
 	"os"
 	"path/filepath"
 )
 
 //WriteBuffer - writes buffer stream to file system
-func WriteBuffer(buffer *io.ReadCloser, unique []byte) (*string, error) {
+func WriteBuffer(buffer *io.ReadCloser, unique []byte, cache string) (*string, error) {
 	coms.Msg("Attempting to copy buffer to file...")
 	// create filename
 	fN := name(unique)
 	// create filepath
-	fP, err := FullPath(fN)
+	fP, err := FullPath(fN, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -34,9 +33,9 @@ func WriteBuffer(buffer *io.ReadCloser, unique []byte) (*string, error) {
 }
 
 //GetFile - return a Sf for the Rq or error if it doesn't exist yet
-func GetFile(unique []byte) (*string, error) {
+func GetFile(unique []byte, cache string) (*string, error) {
 	fN := name(unique)
-	fP, err := FullPath(fN)
+	fP, err := FullPath(fN, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +46,8 @@ func GetFile(unique []byte) (*string, error) {
 }
 
 //FullPath - returns the full path to a file
-func FullPath(fN string) (string, error) {
-	return filepath.Abs(filepath.Join(config.Val(config.CACHEPATH), fN))
+func FullPath(fN string, cache string) (string, error) {
+	return filepath.Abs(filepath.Join(cache, fN))
 }
 
 //Name - returns the proper filename for caching

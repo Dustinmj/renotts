@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"github.com/dustinmj/renotts/config"
 )
 
 //AvailServs map of services available
@@ -10,7 +11,7 @@ var AvailServs = map[string]eng{
 
 //Eng tts engine interface
 type eng interface {
-	Query(*request) (*string, error)
+	Query(*request, config.Cfg) (*string, error)
 	SetDefs()
 	Caches() bool
 }

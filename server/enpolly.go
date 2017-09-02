@@ -22,10 +22,10 @@ func (Polly engine) Caches() bool {
 	return true
 }
 
-func (Polly engine) Query(req *request) (*string, error) {
-	sF, err := file.GetFile(req.Unique) // checks for cached file
+func (Polly engine) Query(req *request, cfg config.Cfg) (*string, error) {
+	sF, err := file.GetFile(req.Unique, cfg.Path()) // checks for cached file
 	if err != nil {
-		sF, err = awsRequest(req)
+		sF, err = awsRequest(req, cfg.Val(config.AWSPROFILE), cfg.Path())
 		if err != nil {
 			return nil, err
 		}
@@ -33,14 +33,12 @@ func (Polly engine) Query(req *request) (*string, error) {
 	return sF, nil
 }
 
-func awsRequest(req *request) (*string, error) {
+func awsRequest(req *request, prf string, cache string) (*string, error) {
 	coms.Msg("Sending aws request...")
 	format := "mp3"
 	sample := req.Param.SampleRate
 	voice := req.Param.Voice
 	text := req.Param.Text
-	// look for aws profile settings
-	prf := config.Val(config.AWSPROFILE)
 	var sess *session.Session
 	if len(prf) > 0 {
 		sess = session.Must(session.NewSessionWithOptions(session.Options{
@@ -65,7 +63,7 @@ func awsRequest(req *request) (*string, error) {
 		return nil, err
 	}
 	defer from.AudioStream.Close()
-	sF, err := file.WriteBuffer(&from.AudioStream, req.Unique)
+	sF, err := file.WriteBuffer(&from.AudioStream, req.Unique, cache)
 	if err != nil {
 		coms.Msg("Error writing file, check cache path settings.")
 		return nil, err
