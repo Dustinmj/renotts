@@ -18,9 +18,11 @@ import (
 // multiplier for padding when silence is needed
 const paddingMillis = 2000
 
-type dec123 struct {
-	Decoder *mpg123.Decoder
-}
+// intermediate buffer prevents file io calls in audio callback
+const interBuffSize = 4000
+
+// minimum intermediate buffer size before we attempt re-fill
+const interBuffThresh = 1000
 
 type track struct {
 	Decoder  *mpg123.Decoder
