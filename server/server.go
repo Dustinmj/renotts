@@ -309,7 +309,7 @@ func playFile(mpgPlayer player.SPlayer, file string, before bool, after bool, cf
 		mpgPlayer.Queue(file, before, after)
 		return nil
 	}
-	if err := mpgPlayer.Play(file, before, after, cfg.Cache()); err != nil {
+	if err := mpgPlayer.Play(file, before, after, cfg.Val(config.EXECPLAYER)); err != nil {
 		coms.Msg("Unable to play ", file, err.Error())
 		return err
 	}

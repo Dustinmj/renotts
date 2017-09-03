@@ -23,9 +23,9 @@ func (Polly engine) Caches() bool {
 }
 
 func (Polly engine) Query(req *request, cfg config.Cfg) (*string, error) {
-	sF, err := file.GetFile(req.Unique, cfg.Path()) // checks for cached file
+	sF, err := file.GetFile(req.Unique, cfg.Cache()) // checks for cached file
 	if err != nil {
-		sF, err = awsRequest(req, cfg.Val(config.AWSPROFILE), cfg.Path())
+		sF, err = awsRequest(req, cfg.Val(config.AWSPROFILE), cfg.Cache())
 		if err != nil {
 			return nil, err
 		}
