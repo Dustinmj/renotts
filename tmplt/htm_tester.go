@@ -10,10 +10,10 @@ div#tester div#output,div#tester div#request{display:none;background-color:#EFEF
 <div id="tester">
     <form action="" method="post">
         <label for="host">Host</label>
-        <input type="text" id="host" name="host" value="192.168.1.70:8080" />
+        <input type="text" id="host" name="host" value="{{.Host}}" />
         <br />
         <label for="path">Path</label>
-        <input type="text" id="path" name="path" value="/tts/polly" />
+        <input type="text" id="path" name="path" value="{{.Path}}" />
         <br />
         <label for="voice">Voice</label>
         <select id="voice" name="voice">
