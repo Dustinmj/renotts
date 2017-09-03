@@ -64,7 +64,7 @@ body h2 small{display:block;font-size:.6em;font-weight:400;color:#009fdb}body>di
             <code>sudo nano /etc/rc.local</code>
             </p>
             <p><strong>3) Copy/paste to rc.local (before 'exit 0'):</strong>
-            <code># Start RenoTTS as {{.User}}<br />su {{.User}} -c '/tmp/go-build986520472/command-line-arguments/_obj/exe/renotts >> /tmp/RenoTTS.log 2>&1 &'</code>
+            <code># Start RenoTTS as {{.User}}<br />su {{.User}} -c '{{.AppPath}} >> /tmp/RenoTTS.log 2>&1 &'</code>
             </p>
             <p><strong>4) Make sure {{.User}} is a member of the audio group.</strong>
             <code>sudo adduser {{.User}} audio</code>
