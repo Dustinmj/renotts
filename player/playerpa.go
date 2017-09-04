@@ -95,7 +95,8 @@ func (mpgPlayer *mplayer) playAudio(path string, padB bool, padA bool, fromQueue
 		os.Exit(2)
 	}()
 
-	playMPG(&t) // blocking
+	// blocks until complete and stream closed or err
+	playMPG(&t)
 
 	// check for queued files
 	if len(mpgPlayerQueue) > 0 {
@@ -111,8 +112,6 @@ func (mpgPlayer *mplayer) playAudio(path string, padB bool, padA bool, fromQueue
 	if err = portaudio.Terminate(); err != nil {
 		coms.Msg(err.Error())
 	}
-	// sleep momentarily to allow portaudio to finish
-	time.Sleep(time.Duration(500) * time.Millisecond)
 	// release intterupts
 	signal.Reset(os.Interrupt, syscall.SIGTERM)
 	// exported Play can now be called
@@ -139,8 +138,26 @@ func (mpgPlayer *mplayer) Queue(path string, before bool, after bool) error {
 // we do our best to close out, but
 // don't let it block indefinitely
 func closeStream(s *portaudio.Stream) {
-	s.Abort()
-	s.Close()
+	c := make(chan int)
+	e := make(chan error)
+	go func(s *portaudio.Stream) {
+		// this can hang indefinitely
+		// but portaudio terminate does clean
+		// up the stream, we still try...
+		// cleaning up goroutine on timeout
+		// someday maybe portaudio closeStream
+		// will be more reliable??
+		select {
+		case e <- s.Close():
+			c <- 2
+			return
+		case <-time.After(100 * time.Millisecond):
+			c <- 1
+			return
+		}
+	}(s)
+	// block until complete or timed out
+	<-c
 }
 
 func playMPG(t *track) {
@@ -153,13 +170,13 @@ func playMPG(t *track) {
 	}
 	// create parameters
 	p := portaudio.HighLatencyParameters(nil, out)
-	p.Output.Channels = t.Channels
-	p.SampleRate = float64(t.Rate)
-	// allow portaudio to decide buffer size
+	// single channel output for tts
+	p.Output.Channels = 1
+	// allow portaudio to decide buffer size, don't 'have' to set this, but readability
 	p.FramesPerBuffer = portaudio.FramesPerBufferUnspecified
+	p.SampleRate = float64(t.Rate)
 	// create stream
 	stream, err := portaudio.OpenStream(p, t.playCallback)
-	defer closeStream(stream)
 	if err != nil {
 		coms.Msg(err.Error())
 		return
@@ -176,6 +193,9 @@ func playMPG(t *track) {
 		return
 	}
 	done.Wait()
+	// explicitly call close on stream,
+	// blocking until complete or timed out
+	closeStream(stream)
 }
 
 func (t *track) playCallback(out []int16) {
@@ -187,7 +207,7 @@ func (t *track) playCallback(out []int16) {
 		// stream, a small delay here prevents
 		// close stream from hanging indefinitely
 		// when close is called called upstream
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		<-time.After(500 * time.Millisecond)
 		return
 	}
 	// read any before data first
@@ -231,10 +251,10 @@ func format(dec *mpg123.Decoder, file string) error {
 		return err
 	}
 	// format info
-	rate, channels, _ := dec.GetFormat()
+	rate, _, _ := dec.GetFormat()
 	// don't allow format to vary
 	dec.FormatNone()
-	dec.Format(rate, channels, mpg123.ENC_SIGNED_16)
+	dec.Format(rate, 1, mpg123.ENC_SIGNED_16)
 	return nil
 }
 
