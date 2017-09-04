@@ -13,7 +13,7 @@ var execPlayer = eplayer{}
 var execPlayerQueue = []playerQueueFile{}
 var execIsPlaying bool
 
-func (execPlayer eplayer) Play(path string, padB bool, padA bool, player string) error {
+func (execPlayer *eplayer) Play(path string, padB bool, padA bool, player string) error {
 	execIsPlaying = true
 	coms.Msg("Playing file", "via", player+":", path)
 	// before silence
@@ -44,11 +44,11 @@ func (execPlayer eplayer) Play(path string, padB bool, padA bool, player string)
 	return nil
 }
 
-func (execPlayer eplayer) Busy() bool {
+func (execPlayer *eplayer) Busy() bool {
 	return execIsPlaying
 }
 
-func (execPlayer eplayer) Queue(path string, before bool, after bool) error {
+func (execPlayer *eplayer) Queue(path string, before bool, after bool) error {
 	execPlayerQueue = append(execPlayerQueue,
 		playerQueueFile{
 			Path:   path,
@@ -57,7 +57,7 @@ func (execPlayer eplayer) Queue(path string, before bool, after bool) error {
 	return nil
 }
 
-func (execPlayer eplayer) execCommand(cmd string, path string) error {
+func (execPlayer *eplayer) execCommand(cmd string, path string) error {
 	com := exec.Command(cmd, path)
 	err := com.Start()
 	if err != nil {
@@ -70,7 +70,7 @@ func (execPlayer eplayer) execCommand(cmd string, path string) error {
 	return nil
 }
 
-func (execPlayer eplayer) playSilence(player string) error {
+func (execPlayer *eplayer) playSilence(player string) error {
 	if err := execPlayer.execCommand(player, file.SilencePath); err != nil {
 		return err
 	}

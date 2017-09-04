@@ -18,14 +18,8 @@ import (
 // multiplier for padding when silence is needed
 const paddingMillis = 2000
 
-// intermediate buffer prevents file io calls in audio callback
-const interBuffSize = 4000
-
-// minimum intermediate buffer size before we attempt re-fill
-const interBuffThresh = 1000
-
 type track struct {
-	Decoder  *mpg123.Decoder
+	Decoder  *mpgBuff
 	Before   *bytes.Buffer
 	After    *bytes.Buffer
 	Rate     int64
@@ -43,12 +37,12 @@ var mpgPlayer = mplayer{}
 var done sync.WaitGroup
 var mpgplaying bool
 
-func (mpgPlayer mplayer) Play(path string, padB bool, padA bool, player string) error {
+func (mpgPlayer *mplayer) Play(path string, padB bool, padA bool, player string) error {
 	// not interested in player...
 	return mpgPlayer.playAudio(path, padB, padA, false)
 }
 
-func (mpgPlayer mplayer) playAudio(path string, padB bool, padA bool, fromQueue bool) error {
+func (mpgPlayer *mplayer) playAudio(path string, padB bool, padA bool, fromQueue bool) error {
 	if mpgplaying && !fromQueue {
 		return errors.New("portaudio is busy")
 	}
@@ -67,7 +61,10 @@ func (mpgPlayer mplayer) playAudio(path string, padB bool, padA bool, fromQueue 
 	}
 
 	t := track{
-		Decoder: handle}
+		Decoder: &mpgBuff{
+			fileDec: handle,
+			cap:     interBuffSize}}
+	t.Decoder.Prepare()
 
 	// format data
 	t.Rate, t.Channels, _ = handle.GetFormat()
@@ -125,11 +122,11 @@ func (mpgPlayer mplayer) playAudio(path string, padB bool, padA bool, fromQueue 
 	return nil
 }
 
-func (mpgPlayer mplayer) Busy() bool {
+func (mpgPlayer *mplayer) Busy() bool {
 	return mpgplaying
 }
 
-func (mpgPlayer mplayer) Queue(path string, before bool, after bool) error {
+func (mpgPlayer *mplayer) Queue(path string, before bool, after bool) error {
 	mpgPlayerQueue = append(mpgPlayerQueue,
 		playerQueueFile{
 			Path:   path,
