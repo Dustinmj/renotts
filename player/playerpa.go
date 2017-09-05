@@ -12,11 +12,16 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 )
 
 // multiplier for padding when silence is needed
 const paddingMillis = 2000
+
+// user configured device type name
+// allows user to create specific device
+// type for renotts (e.g. in ~/.asoundrc),
+// this will be chosen over any other, if it exists.
+const userDeviceTypeName = "renotts"
 
 type track struct {
 	Decoder  *mpgBuff
@@ -91,7 +96,8 @@ func (mpgPlayer *mplayer) playAudio(path string, padB bool, padA bool, fromQueue
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sig
-		portaudio.Terminate() // stop all buffers before exiting
+		close(sig)
+		portaudio.Terminate()
 		os.Exit(2)
 	}()
 
@@ -114,6 +120,7 @@ func (mpgPlayer *mplayer) playAudio(path string, padB bool, padA bool, fromQueue
 	}
 	// release intterupts
 	signal.Reset(os.Interrupt, syscall.SIGTERM)
+	close(sig)
 	// exported Play can now be called
 	mpgplaying = false
 	coms.Msg("Completed Playing.")
@@ -134,29 +141,13 @@ func (mpgPlayer *mplayer) Queue(path string, before bool, after bool) error {
 	return nil
 }
 
-// portaudio can hang closing stream,
-// we do our best to close out, but
-// don't let it block indefinitely
+// blocking close stream
 func closeStream(s *portaudio.Stream) {
-	c := make(chan int)
-	e := make(chan error)
+	c := make(chan struct{})
 	go func(s *portaudio.Stream) {
-		// this can hang indefinitely
-		// but portaudio terminate does clean
-		// up the stream, we still try...
-		// cleaning up goroutine on timeout
-		// someday maybe portaudio closeStream
-		// will be more reliable??
-		select {
-		case e <- s.Close():
-			c <- 2
-			return
-		case <-time.After(100 * time.Millisecond):
-			c <- 1
-			return
-		}
+		s.Close()
+		close(c)
 	}(s)
-	// block until complete or timed out
 	<-c
 }
 
@@ -172,7 +163,7 @@ func playMPG(t *track) {
 	p := portaudio.HighLatencyParameters(nil, out)
 	// single channel output for tts
 	p.Output.Channels = 1
-	// allow portaudio to decide buffer size, don't 'have' to set this, but readability
+	// allow portaudio to decide buffer size, don't 'have' to set this, but... idiomatic
 	p.FramesPerBuffer = portaudio.FramesPerBufferUnspecified
 	p.SampleRate = float64(t.Rate)
 	// create stream
@@ -181,6 +172,7 @@ func playMPG(t *track) {
 		coms.Msg(err.Error())
 		return
 	}
+	defer closeStream(stream)
 
 	// ASYNC Stream is the only way to allow PA to determine
 	// buffer size. This prevents having to hard-code it which
@@ -193,23 +185,15 @@ func playMPG(t *track) {
 		return
 	}
 	done.Wait()
-	// explicitly call close on stream,
-	// blocking until complete or timed out
-	closeStream(stream)
+	stream.Stop()
 }
 
 func (t *track) playCallback(out []int16) {
-	// create output bytes
-	audio := make([]byte, len(out)*2)
 	if !t.Loaded {
-		// since portaudio bindings will not allow
-		// us to return values from callback to close
-		// stream, a small delay here prevents
-		// close stream from hanging indefinitely
-		// when close is called called upstream
-		<-time.After(500 * time.Millisecond)
 		return
 	}
+	// create output bytes
+	audio := make([]byte, len(out)*2)
 	// read any before data first
 	if t.Before != nil && t.Before.Len() > 0 {
 		t.Before.Read(audio)
@@ -259,25 +243,30 @@ func format(dec *mpg123.Decoder, file string) error {
 }
 
 func findOutputDevice() *portaudio.DeviceInfo {
-	// first attempt to find default through pa
+	// first, prefer user defined options
+	devs, _ := portaudio.Devices()
+	if devs != nil {
+		if d := searchNames(devs, []string{userDeviceTypeName}); d != nil {
+			return d
+		}
+	}
+	// second, attempt to find default through pa
 	dev, err := portaudio.DefaultOutputDevice()
 	if err == nil {
 		return dev
 	}
 	// next, attempt to look for ourselves
-	devs, err := portaudio.Devices()
-	if err != nil { // if we can't find devices even
-		return nil
-	}
-	// look for nice options
-	labels := []string{"default", "pulse", "dmix"}
-	if d := searchNames(devs, labels); d != nil {
-		return d
-	}
-	// look for blocking options
-	labels = []string{"sysdefault", "spdif", "iec958", "hw"}
-	if d := searchNames(devs, labels); d != nil {
-		return d
+	if devs != nil {
+		// look for nice options
+		labels := []string{"default", "pulse", "dmix"}
+		if d := searchNames(devs, labels); d != nil {
+			return d
+		}
+		// look for other options
+		labels = []string{"sysdefault", "spdif", "iec958", "hw"}
+		if d := searchNames(devs, labels); d != nil {
+			return d
+		}
 	}
 	return nil
 }
