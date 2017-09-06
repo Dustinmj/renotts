@@ -120,7 +120,6 @@ func (mpgPlayer *mplayer) playAudio(path string, padB bool, padA bool, fromQueue
 	}
 	// release intterupts
 	signal.Reset(os.Interrupt, syscall.SIGTERM)
-	close(sig)
 	// exported Play can now be called
 	mpgplaying = false
 	coms.Msg("Completed Playing.")
