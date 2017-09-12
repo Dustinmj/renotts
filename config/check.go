@@ -17,7 +17,7 @@ func (ConfigChk chk) All() []string {
 	var s []string
 	s = append(s, ConfigChk.Config(conf)...)
 	s = append(s, ConfigChk.Cache(conf))
-	s = append(s, ConfigChk.Player(conf))
+	s = append(s, ConfigChk.Player(conf)...)
 	s = append(s, ConfigChk.Amazon(conf)...)
 	return s
 }
@@ -62,14 +62,24 @@ func (ConfigChk chk) Amazon(conf Cfg) []string {
 	return s
 }
 
-func (ConfigChk chk) Player(conf Cfg) string {
-	if !viper.IsSet(EXECPLAYER) {
-		return "execPlayer not set, will play files internally"
-	}
-	// if execplayer option is set, make sure we have access to it
+func (ConfigChk chk) Player(conf Cfg) []string {
+	var out []string
+	var intern bool
 	p := conf.Val(EXECPLAYER)
-	if _, err := exec.LookPath(p); err == nil {
-		return EXECPLAYER + " found: " + p + ", will play files through " + p
+	if !conf.Exists(EXECPLAYER) {
+		out = append(out, "execPlayer not set, will play files internally")
+		intern = true
+	} else if _, err := exec.LookPath(p); err == nil {
+		out = append(out, EXECPLAYER+" found: "+p+", will play files through "+p)
+	} else {
+		out = append(out, EXECPLAYER+" set but not found: "+p+", will play files internally")
+		intern = true
 	}
-	return EXECPLAYER + " set but not found: " + p + ", will play files internally"
+	if intern {
+		// buffer check
+		if conf.Exists(USERBUFFERSIZE) && conf.Intval(USERBUFFERSIZE) != 0 {
+			out = append(out, USERBUFFERSIZE+" set to "+conf.Val(USERBUFFERSIZE))
+		}
+	}
+	return out
 }

@@ -7,14 +7,16 @@ import (
 )
 
 //structure for implementing engine interface
-type eplayer struct{}
+type eplayer struct {
+	player string
+}
 
-var execPlayer = eplayer{}
 var execPlayerQueue = []playerQueueFile{}
 var execIsPlaying bool
 
-func (execPlayer *eplayer) Play(path string, padB bool, padA bool, player string) error {
+func (execPlayer *eplayer) Play(path string, padB bool, padA bool) error {
 	execIsPlaying = true
+	player := execPlayer.player
 	coms.Msg("Playing file", "via", player+":", path)
 	// before silence
 	if padB {
@@ -39,7 +41,7 @@ func (execPlayer *eplayer) Play(path string, padB bool, padA bool, player string
 	if len(execPlayerQueue) > 0 {
 		next := execPlayerQueue[0]
 		execPlayerQueue = execPlayerQueue[1:]
-		execPlayer.Play(next.Path, next.Before, next.After, player)
+		execPlayer.Play(next.Path, next.Before, next.After)
 	}
 	return nil
 }

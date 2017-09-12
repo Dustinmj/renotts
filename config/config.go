@@ -20,6 +20,8 @@ type Cfg interface {
 	SetOverride(string, string)
 	// Val retrieve value from config
 	Val(string) string
+	// Intval retrieve value from config
+	Intval(string) int
 	//Exists does a config key/value Exists
 	Exists(string) bool
 	//Path gets current config path
@@ -50,6 +52,8 @@ const (
 	PORT = "port"
 	//PATH blah
 	PATH = "path"
+	//PATH blah
+	USERBUFFERSIZE = "force-portaudio-buffer-size"
 )
 
 // config defaults
@@ -62,6 +66,7 @@ const (
 	defConfigFile  = "renotts.toml"
 	defAWSProfile  = "default"
 	defExecPlayer  = "mplayer"
+	defBufferSize  = 0
 )
 
 type blah struct{}
@@ -115,7 +120,7 @@ func init() {
 	// check external player if needed
 	chkExecPlayer(cfg)
 	// set and check defaults
-	setDefs(defPort, defPath, defCachePath)
+	setDefs(defPort, defPath, defCachePath, defBufferSize)
 	chkDefs(cfg)
 }
 
@@ -137,6 +142,11 @@ func (conf blah) SetOverride(key string, def string) {
 // Val retrieve value from config
 func (conf blah) Val(key string) string {
 	return viper.GetString(key)
+}
+
+// Intval retrieve int value from config
+func (conf blah) Intval(key string) int {
+	return viper.GetInt(key)
 }
 
 //Exists does a config key/value Exists
@@ -179,10 +189,11 @@ func (conf blah) AppName() string {
 	return appName
 }
 
-func setDefs(port string, path string, cachepath string) {
+func setDefs(port string, path string, cachepath string, buffSize int) {
 	viper.SetDefault(PORT, port)
 	viper.SetDefault(PATH, path)
 	viper.SetDefault(CACHEPATH, cachepath)
+	viper.SetDefault(USERBUFFERSIZE, buffSize)
 }
 
 func setPaths() {
@@ -218,7 +229,8 @@ func createConfig(path string) error {
 		Port:             defOption(PORT, defPort, false),
 		Path:             defOption(PATH, defPath, false),
 		Execplayer:       defOption(EXECPLAYER, defExecPlayer, true),
-		Cachepath:        defOption(CACHEPATH, defCachePath, false)}
+		Cachepath:        defOption(CACHEPATH, defCachePath, false),
+		ForceBufferSize:  defOption(USERBUFFERSIZE, "0", true)}
 	tmplt.ParseF(f, tmplt.ConfigFl, dat)
 	return nil
 }
@@ -241,8 +253,11 @@ func chkAmazonConfig(conf Cfg) {
 }
 
 func chkExecPlayer(conf Cfg) {
-	// check execplayer settings
-	coms.Msg(ConfigChk.Player(conf))
+	c := ConfigChk.Player(conf)
+	for _, m := range c {
+		// check execplayer settings
+		coms.Msg(m)
+	}
 }
 
 // check user input

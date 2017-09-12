@@ -50,6 +50,7 @@ type ConfigData struct {
 	Cachepath        string
 	Execplayer       string
 	Awsconfigprofile string
+	ForceBufferSize  string
 }
 
 //SysD - used for systemd file built for user

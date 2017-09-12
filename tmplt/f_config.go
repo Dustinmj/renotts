@@ -39,4 +39,13 @@ var ConfigFl = `# renotts config options
 # aws profile key sets on your machine.
 # default: commented/AWS default
 
-{{.Awsconfigprofile}}`
+{{.Awsconfigprofile}}
+
+# force-portaudio-buffer-size: Buffer size for use when renotts decodes and plays files
+# internally. Setting this to 0 causes the underlying PortAudio to choose the best
+# buffer size for the given hardware. However, if you experience underruns or distortion,
+# you may need manually set this value. common options range from 1000-10000 (max 10000). Increasing
+# buffer size has the effect of increasing memory used during playback.
+# default: 0 ... let PortAudio decide buffer size
+
+{{.ForceBufferSize}}`

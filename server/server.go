@@ -295,7 +295,7 @@ func tts(w http.ResponseWriter, r *http.Request, cfg config.Cfg) {
 	// if required, execute with player
 	if eN.Caches() {
 		p := player.GetPlayer(cfg)
-		if err := playFile(p, *file, before, after, cfg); err != nil {
+		if err := playFile(p, *file, before, after); err != nil {
 			reply(w, http.StatusFailedDependency, "error")
 			return
 		}
@@ -303,13 +303,13 @@ func tts(w http.ResponseWriter, r *http.Request, cfg config.Cfg) {
 	reply(w, http.StatusOK, "success")
 }
 
-func playFile(mpgPlayer player.SPlayer, file string, before bool, after bool, cfg config.Cfg) error {
+func playFile(mpgPlayer player.SPlayer, file string, before bool, after bool) error {
 	// if busy, queue the file for later
 	if mpgPlayer.Busy() {
 		mpgPlayer.Queue(file, before, after)
 		return nil
 	}
-	if err := mpgPlayer.Play(file, before, after, cfg.Val(config.EXECPLAYER)); err != nil {
+	if err := mpgPlayer.Play(file, before, after); err != nil {
 		coms.Msg("Unable to play ", file, err.Error())
 		return err
 	}
