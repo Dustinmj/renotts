@@ -326,7 +326,7 @@ func (mpgPlayer *mplayer) syncPlayMPG(t *track, h *mpg123.Decoder) {
 			return
 		}
 		if eof == mpg123.EOF {
-			// give stream a change to complete
+			// give stream a chance to complete
 			<-time.After(time.Millisecond * 300)
 			return
 		}

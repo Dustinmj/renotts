@@ -46,6 +46,7 @@ var ConfigFl = `# renotts config options
 # buffer size for the given hardware. However, if you experience underruns or distortion,
 # you may need manually set this value. common options range from 1000-10000 (max 10000). Increasing
 # buffer size has the effect of increasing memory used during playback.
+# This option can be very handy on systems like Pi with high latency file I/O.
 # default: 0 ... let PortAudio decide buffer size
 
 {{.ForceBufferSize}}`
