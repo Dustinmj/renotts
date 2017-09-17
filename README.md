@@ -1,4 +1,4 @@
-# renotts 
+# RenoTTS (BETA)
 [http://renotts.com/](https://renotts.com/)
 
 UPNP enabled TTS service for interfacing with AWS Polly to be installed on unix-based SOC or PC. Enables 'talking speaker' speech synthesis device.
@@ -10,7 +10,7 @@ Built for use with SmartThings using handlers available in my repo, but could be
 - Caches files for future playback.
 - Plays files internally or externally.
 - Handles all AWS communication.
-- Super simple configuration.
+- Simple configuration.
 
 ## Build dependancies (outside godeps):
 ```
