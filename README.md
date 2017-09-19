@@ -12,7 +12,7 @@ Built for use with SmartThings using handlers available in my repo, but could be
 - Handles all AWS communication.
 - Simple configuration.
 
-## Build dependancies (outside godeps):
+## Dependancies:
 ```
 portaudio19-dev
 libmpg123-dev
