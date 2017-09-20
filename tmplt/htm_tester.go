@@ -3,7 +3,7 @@ package tmplt
 //TestHTML - renotts tester html
 var TestHTML = `
 {{define "css"}}
-div#tester div#output,div#tester div#request{display:none;background-color:#EFEFEF;color:#333;border:1px solid #DDD;border-radius:4px;margin:2rem 0;padding:0 1rem;max-width:50rem;font-size:80%}div#tester div#output p.txt,div#tester div#request p.txt{color:#666}div#tester div#output p.txt span,div#tester div#request p.txt span{display:block;padding:.25em 0}div#tester div#output p.txt span strong,div#tester div#request p.txt span strong{padding-right:10px}div#tester div#output h2,div#tester div#request h2{color:#009fdb}div#tester div#output{min-height:10rem}div#tester input,div#tester select{background:#EFEFEF;padding:.25em;border:1px solid #ACACAC;width:30em}div#tester select{width:30.5em}div#tester input[type=button]{width:10em;display:block;margin-top:1em;background-color:#009fdb;color:#FFF;font-size:105%;font-weight:700;cursor:pointer}div#tester input[type=checkbox]{width:auto;display:inline-block;margin-right:3em}div#tester label{display:inline-block;width:7em;padding:0 0 1em;color:#333}div#tester label .pad{width:auto;padding:1em 1em 0 0}
+div#tester div#output,div#tester div#request{display:none;background-color:#EFEFEF;color:#333;border:1px solid #DDD;border-radius:4px;margin:2rem 0;padding:0 1rem;max-width:50rem;font-size:80%}div#tester div#output p.txt,div#tester div#request p.txt{color:#666}div#tester div#output p.txt span,div#tester div#request p.txt span{display:block;padding:.25em 0}div#tester div#output p.txt span strong,div#tester div#request p.txt span strong{padding-right:10px}div#tester div#output h2,div#tester div#request h2{color:#009fdb}div#tester div#output{min-height:10rem}div#tester input,div#tester select{background:#EFEFEF;padding:.25em;border:1px solid #ACACAC;width:30em}div#tester select{width:30.5em}div#tester input[type=button]{width:10em;display:block;margin-top:1em;background-color:#009fdb;color:#FFF;font-size:105%;font-weight:700;cursor:pointer}div#tester input[type=checkbox]{width:auto;display:inline-block;margin-right:3em}div#tester label{display:inline-block;width:7em;padding:0 0 1em;color:#333}div#tester label.pad{width:auto}
 {{end}}
 {{define "content"}}
 <!-- start copy -->
@@ -36,9 +36,9 @@ div#tester div#output,div#tester div#request{display:none;background-color:#EFEF
         <label for="tts">Text</label>
         <input type="text" id="tts" name="tts" value="This is a test." />
         <br />
-        <label class="pad" for="padBefore">Silence Before</label>
+        <label class="pad" for="padBefore">Add Silence Before</label>
         <input type="checkbox" id="padBefore" name="padBefore" />
-        <label class="pad" for="padAfter">Silence After</label>
+        <label class="pad" for="padAfter">Add Silence After</label>
         <input type="checkbox" id="padAfter" name="padAfter" />
         <input type="button" id="talk" value="Send Request" />
     </form>
