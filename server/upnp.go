@@ -46,24 +46,22 @@ func init() {
 }
 
 //StartUPNP - Start the UPNP server
-func StartUPNP(ttsPort string) {
+func StartUPNP(ttsPort string, ip string) {
 	go func() {
 		defer func() {
 			sig <- 1
 		}()
-		cast(ttsPort)
+		cast(ttsPort, ip)
 	}()
 }
 
-func cast(ttsPort string) error {
+func cast(ttsPort string, ip string) error {
 	s, err := gossdp.NewSsdp(nil)
 	if err != nil {
 		return err
 	}
 	defer s.Stop()
 	go s.Start()
-	// store ip for future checks
-	ip = getOutboundIP().String()
 	// create server defaults
 	serverDef := defs(ip, ttsPort)
 	s.AdvertiseServer(serverDef) // library re-adverts correctly

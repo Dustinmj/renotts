@@ -103,7 +103,7 @@ func Serve() error {
 	mPort = p
 	baseURI = fmt.Sprintf("http://%v%v", ip, p)
 	ttsEndpoint = fmt.Sprintf("%v/%v/polly/", baseURI, mPath)
-	go StartUPNP(mPort) // create upnp server now that we know port
+	go StartUPNP(mPort, ip) // create upnp server now that we know port
 	coms.Msg(fmt.Sprintf("Instructions/Options: visit %v in a browser.", baseURI))
 	if err := http.ListenAndServe(p, sMux); err != nil {
 		return errors.New("Cannot create webserver. " + err.Error())
