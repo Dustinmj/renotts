@@ -31,7 +31,7 @@ const (
 var upnpuuid string
 
 // fn - the device 'friendly name'
-var upnpfn = coms.AppName + ": " + getOutboundIP().String()
+var upnpfn = coms.AppName
 
 // signal channel, close cast loop
 var sig = make(chan int)
@@ -47,6 +47,8 @@ func init() {
 
 //StartUPNP - Start the UPNP server
 func StartUPNP(ttsPort string, ip string) {
+	// reset friendly id with new ip
+	upnpfn = coms.AppName + ": " + ip
 	go func() {
 		defer func() {
 			sig <- 1
