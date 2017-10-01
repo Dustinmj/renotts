@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"github.com/dustinmj/renotts/coms"
 	"github.com/fromkeith/gossdp"
 	"strings"
@@ -101,7 +102,8 @@ func getMacStr() (string, error) {
 	}
 	var mac string
 	if len(mcs) > 0 {
-		mac = mcs[1]
+		mac = mcs[0]
+		return strings.Replace(mac, ":", "", -1), nil
 	}
-	return strings.Replace(mac, ":", "", -1), nil
+	return "", errors.New("could not identify valid mac address")
 }
